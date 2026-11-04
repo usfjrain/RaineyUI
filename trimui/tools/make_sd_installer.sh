@@ -24,7 +24,7 @@ P="$HERE/package/RaineyUI"
 mkdir -p "$INST/payload/RaineyUI"
 cp "$HERE/installer/launch.sh" "$HERE/installer/install_worker.sh" "$HERE/installer/config.json" "$INST/"
 cp "$P/icon.png" "$INST/icon.png"
-cp -R "$P/rainey" "$P/launch.sh" "$P/config.json" "$P/icon.png" "$P/leds_watch.sh" "$P/raineyleds.init" "$P/res" \
+cp -R "$P/rainey" "$P/launch.sh" "$P/config.json" "$P/icon.png" "$P/leds_watch.sh" "$P/raineyleds.init" "$P/game_fixes.txt" "$P/res" \
       "$INST/payload/RaineyUI/"
 curl -fsSL -o "$INST/cacert.pem" https://curl.se/ca/cacert.pem   # Mozilla CA list (MPL-2.0), for HTTPS on the Brick
 

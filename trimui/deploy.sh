@@ -10,7 +10,7 @@ DEST=/mnt/UDISK/Apps/RaineyUI
 adb get-state >/dev/null
 adb shell "pidof rainey >/dev/null && echo quit > /tmp/rainey_input; mkdir -p $DEST/cores $DEST/res /mnt/UDISK/Roms"
 adb push package/RaineyUI/rainey package/RaineyUI/launch.sh package/RaineyUI/config.json package/RaineyUI/icon.png \
-  package/RaineyUI/leds_watch.sh package/RaineyUI/raineyleds.init $DEST/
+  package/RaineyUI/leds_watch.sh package/RaineyUI/raineyleds.init package/RaineyUI/game_fixes.txt $DEST/
 adb push package/RaineyUI/res/. $DEST/res/
 if [ "$1" = "--full" ]; then
   ./tools/install_emulators.sh

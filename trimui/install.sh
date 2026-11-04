@@ -13,7 +13,7 @@ command -v adb >/dev/null || { echo "adb not found. Install Android platform-too
 
 echo "==> Installing RaineyUI to $DEST"
 adb shell "pidof rainey >/dev/null && echo quit > /tmp/rainey_input; mkdir -p $DEST /mnt/UDISK/Roms /mnt/UDISK/RaineyUI/bios/dc" || true
-for f in rainey launch.sh config.json icon.png leds_watch.sh raineyleds.init; do adb push "$APP/$f" "$DEST/" >/dev/null; done
+for f in rainey launch.sh config.json icon.png leds_watch.sh raineyleds.init game_fixes.txt; do adb push "$APP/$f" "$DEST/" >/dev/null; done
 adb push "$APP/res" "$DEST/" >/dev/null
 for d in FC SFC MD PS DC ARCADE GB GBA N64 NDS; do adb shell "mkdir -p /mnt/UDISK/Roms/$d"; done
 # LED lights: re-apply the chosen preset at boot and whenever the TrimUI menu restarts

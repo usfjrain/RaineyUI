@@ -53,6 +53,14 @@ while true; do
             printf '%s\n' 'input_player1_analog_dpad_mode = "0"' 'audio_max_timing_skew = "0.050000"' >> $APPEND
             echo "dreamcast: $RES, hle_bios=$HLE" >> "$LOG"
         fi
+        # per-game fixes: game_fixes.txt lines "<part of the ROM file name>|<retroarch.cfg line>"
+        if [ -f "$progdir/game_fixes.txt" ]; then
+            NAME=${ROM##*/}
+            while IFS='|' read -r PAT LINE; do
+                case "$PAT" in '' | \#*) continue ;; esac
+                case "$NAME" in *"$PAT"*) echo "$LINE" >> $APPEND && echo "game fix: $LINE" >> "$LOG" ;; esac
+            done < "$progdir/game_fixes.txt"
+        fi
         [ "$SYS" = "n64" ] && swap_on
         cd "$RA_DIR"
         HOME="$RA_DIR" ./ra64.trimui -v -c "$RA_DIR/retroarch.cfg" --appendconfig $APPEND -L "$CORE" "$ROM" >> "$LOG" 2>&1
