@@ -30,12 +30,22 @@ copyrighted artwork.** Use only games and BIOS files you are legally allowed to 
 
 ### Install
 
-1. Download `RaineyUI-TrimUI-<version>.zip` from [Releases](../../releases) and unzip it.
-2. Connect the Brick to your computer with USB (ADB on), with
-   [adb](https://developer.android.com/tools/releases/platform-tools), `python3` and `curl` installed.
-3. Run `./install.sh`. It copies RaineyUI to internal storage and downloads the emulators from their
-   original projects (libretro buildbot, [CrossMix-OS](https://github.com/cizia64/CrossMix-OS)).
-4. On the Brick: **Apps → RaineyUI**.
+1. Download `RaineyUI-Installer-TrimUI-<version>.zip` from [Releases](../../releases).
+2. Unzip it and copy its `Apps` folder to the root of your SD card (it merges with the `Apps`
+   folder already there).
+3. Put the SD card in the Brick, connect the Brick to Wi-Fi, and open **Apps → Install RaineyUI**.
+   Press A. It installs RaineyUI to internal storage and downloads the emulators from their original
+   projects (libretro buildbot, [CrossMix-OS](https://github.com/cizia64/CrossMix-OS)).
+4. When it says *RaineyUI is installed!*, open **Apps → RaineyUI**.
+
+Run the installer again any time to update. Your games, saves and SD card are not changed.
+
+<details><summary>Install from a computer over USB instead</summary>
+
+Download `RaineyUI-TrimUI-<version>.zip`, connect the Brick with USB (ADB on), and run
+`./install.sh` (needs [adb](https://developer.android.com/tools/releases/platform-tools),
+`python3` and `curl`).
+</details>
 
 Optional: `Send-to-Brick-mac.zip` from Releases is a drag-and-drop app for copying games over USB.
 

@@ -27,6 +27,9 @@ while true; do
     LAUNCHER=$(sed -n 5p /tmp/rainey_launch)
     echo "--- launch [$LAUNCHER] $SYS: $ROM" >> "$LOG"
     echo performance > $GOV 2>/dev/null
+    # External emulators (PPSSPP especially) don't redraw the letterbox bars, which would keep
+    # showing RaineyUI's last frame. Blank all of the display memory first (~0.2 s).
+    [ "$LAUNCHER" != "rainey" ] && dd if=/dev/zero of=/dev/fb0 bs=1M count=64 2>/dev/null
     case "$LAUNCHER" in
     retroarch)
         # RetroArch's per-folder overrides only match the internal N64/DC folder names, so games

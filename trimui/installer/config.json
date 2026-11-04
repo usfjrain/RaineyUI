@@ -1,0 +1,7 @@
+{
+"label":"Install RaineyUI",
+"icon":"",
+"icontop":"icon.png",
+"launch":"launch.sh",
+"description":"Installs or updates RaineyUI on internal storage"
+}

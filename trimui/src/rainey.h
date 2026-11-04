@@ -109,6 +109,9 @@ void bg_shutdown(void);
 /* ---- entry points ---- */
 int ui_main(SDL_Window *win, SDL_Renderer *ren);
 int player_main(SDL_Window *win, SDL_Renderer *ren, const char *launch_file);
+int install_ui_main(SDL_Window *win, SDL_Renderer *ren, const char *worker);
+int unzip_cli(const char *zip, const char *outdir);
+int patch_core_cli(const char *in, const char *out);
 
 /* ---- input abstraction shared by UI + player menu ---- */
 typedef enum {

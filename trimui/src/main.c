@@ -59,7 +59,10 @@ int main(int argc, char **argv) {
         close(fd);
         return r < 0;
     }
+    if (argc >= 4 && !strcmp(argv[1], "--unzip")) return unzip_cli(argv[2], argv[3]);           /* installer */
+    if (argc >= 4 && !strcmp(argv[1], "--patch-core")) return patch_core_cli(argv[2], argv[3]); /* installer */
     bool play = argc >= 3 && !strcmp(argv[1], "--play");
+    bool install = argc >= 3 && !strcmp(argv[1], "--install-ui");
 
     settings_load();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
@@ -93,7 +96,9 @@ int main(int argc, char **argv) {
     if (!gfx_init(ren)) return 1;
     input_init();
 
-    int rc = play ? player_main(win, ren, argv[2]) : ui_main(win, ren);
+    int rc = play ? player_main(win, ren, argv[2])
+             : install ? install_ui_main(win, ren, argv[2])
+                       : ui_main(win, ren);
 
     gfx_quit();
     SDL_DestroyRenderer(ren);

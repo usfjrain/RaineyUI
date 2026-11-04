@@ -125,7 +125,17 @@ at power-on and each time MainUI restarts. To remove it:
 
 ## Install (from a release)
 
-Unzip `RaineyUI-TrimUI-<version>.zip`, connect the Brick over USB (ADB on) and run `./install.sh`
+**Easiest — SD card, no computer tools:** unzip `RaineyUI-Installer-TrimUI-<version>.zip` to the
+root of the SD card (its `Apps` folder merges with the card's), put the card in the Brick, connect
+to Wi-Fi and open **Apps → Install RaineyUI**. The installer (`installer/`, run by
+`rainey --install-ui`) copies the app to internal storage, downloads the emulators listed in its
+`manifest.txt` from their original projects (CrossMix-OS files are checked against SHA-256 hashes
+recorded at build time; libretro cores are unzipped and patched on the device with
+`rainey --unzip` / `rainey --patch-core`), installs the LED hook and a swap file, and shows the
+progress. Running it again updates RaineyUI and only downloads what changed. Log:
+`/mnt/UDISK/RaineyUI/install.log`. Build it with `tools/make_sd_installer.sh <version>`.
+
+**From a computer over USB:** unzip `RaineyUI-TrimUI-<version>.zip`, connect the Brick over USB (ADB on) and run `./install.sh`
 (needs `adb`, `python3`, `curl`). It copies the app to `/mnt/UDISK/Apps/RaineyUI`, installs the
 LED-lights boot hook, and runs `install_emulators.sh`, which downloads the emulators from their
 original sources (libretro buildbot, CrossMix-OS at a pinned commit) and installs them.

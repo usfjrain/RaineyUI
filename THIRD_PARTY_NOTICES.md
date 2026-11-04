@@ -23,7 +23,12 @@
 | SDL2 runtime libraries | TrimUI (linking) | the TrimUI firmware on the device | zlib |
 | zig toolchain | TrimUI build | <https://ziglang.org> | MIT |
 
-`trimui/tools/glibc_downgrade.py` adjusts ELF symbol-version requirements of the downloaded
+The SD-card installer (`RaineyUI-Installer-TrimUI-*.zip`) also contains the Mozilla CA certificate list
+from <https://curl.se/docs/caextract.html> (`cacert.pem`, MPL-2.0), used to verify downloads on the
+device, and RaineyUI's edited copies of the CrossMix-OS RetroArch and PPSSPP config files
+(GPL-3.0, from the pinned commit above).
+
+`trimui/tools/glibc_downgrade.py` (and its C port, `rainey --patch-core`) adjusts ELF symbol-version requirements of the downloaded
 libretro cores so they load on the TrimUI firmware's glibc 2.33; it does not change their code.
 
 RaineyUI does not include or download games, BIOS files or copyrighted artwork.
