@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Rainey</string>
+    <string name="launcher_key_service_label">Rainey launcher button</string>
+    <string name="launcher_key_service_description">Launches Rainey when the RG406V launcher button sends F10.</string>
+</resources>

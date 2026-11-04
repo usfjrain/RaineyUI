@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.Rainey" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#050812</item>
+        <item name="android:statusBarColor">#050812</item>
+    </style>
+
+    <style name="Theme.Rainey.Router" parent="android:style/Theme.NoDisplay" />
+</resources>

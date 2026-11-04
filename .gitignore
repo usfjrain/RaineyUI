@@ -1,0 +1,59 @@
+# --- never publish games, BIOS or personal media ---
+*.zip
+*.7z
+*.nds
+*.n64
+*.z64
+*.v64
+*.sfc
+*.smc
+*.gba
+*.gb
+*.gbc
+*.nes
+*.iso
+*.chd
+*.cdi
+*.gdi
+*.cue
+*.bin
+*.mov
+n64/
+docs/
+tmp/
+
+# --- local machine / IDE ---
+.DS_Store
+.local/
+.gradle/
+.kotlin/
+.idea/
+local.properties
+*.code-workspace
+*.iml
+
+# --- build outputs ---
+build/
+/app/build/
+/libretrodroid/build/
+/libretrodroid/.cxx/
+.cxx/
+dist/
+desktop/build/
+
+# --- downloaded at build/install time (see READMEs) ---
+app/src/main/jniLibs/**/*.so
+trimui/cores/
+trimui/cores_dl/
+trimui/external/
+trimui/devlibs/
+trimui/build/
+trimui/package/RaineyUI/rainey
+trimui/package/RaineyUI/cores/
+trimui/package/RaineyUI/emus/
+trimui/mac/Send to Brick.app/
+trimui/third_party/*
+!trimui/third_party/include/
+!trimui/third_party/libretro.h
+!trimui/third_party/miniz/
+trimui/third_party/miniz/examples/

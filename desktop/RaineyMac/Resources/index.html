@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rainey Desktop</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="scanlines">
+  <main class="app">
+    <section id="splash" class="view splash active" aria-label="Splash">
+      <div class="bootsweep"></div>
+      <div>
+        <img class="brand-logo" src="assets/logo.png" alt="Rainey">
+        <div class="boot-label">BOOTING MAC DESKTOP FRONTEND</div>
+        <div class="bootbar"><span></span></div>
+      </div>
+    </section>
+
+    <section id="home" class="view" aria-label="Home">
+      <div class="topbar">
+        <div>
+          <img class="home-logo" src="assets/logo.png" alt="Rainey">
+          <div class="subtitle">Built for this MacBook Pro: Intel i5, 8 GB RAM, Iris 6100</div>
+        </div>
+        <div class="actions">
+          <button class="image-button" data-action="library" aria-label="Library"><img src="assets/library button 2.png" alt="Library"></button>
+          <button class="image-button" data-action="settings" aria-label="Settings"><img src="assets/settings button.png" alt="Settings"></button>
+        </div>
+      </div>
+      <div id="carouselWrap" class="carousel-wrap">
+        <div id="carousel" class="carousel"></div>
+      </div>
+      <div id="homeStatus" class="status"></div>
+    </section>
+
+    <section id="library" class="view" aria-label="Library">
+      <div class="topbar">
+        <div>
+          <h2 id="libraryTitle">Library</h2>
+          <div id="librarySubtitle" class="subtitle">0 games</div>
+          <div class="library-tools">
+            <button id="loadContentButton">Load Content</button>
+            <button id="pickFolderButton">Pick Folder</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="modeButton">List</button>
+          <button data-action="home">Back</button>
+        </div>
+      </div>
+      <div id="recentRail" class="rail"></div>
+      <div id="favoriteRail" class="rail"></div>
+      <div id="libraryStatus" class="status"></div>
+      <div id="libraryBody" class="library-body"></div>
+    </section>
+
+    <section id="detail" class="view" aria-label="Game detail">
+      <div id="detailBody" class="detail-layout"></div>
+    </section>
+
+    <section id="settings" class="view" aria-label="Settings">
+      <div class="topbar">
+        <div>
+          <h2>Settings</h2>
+          <div class="subtitle">ROM folders, scanlines, launch behavior</div>
+        </div>
+        <div class="actions">
+          <button id="saveButton">Save</button>
+          <button data-action="home">Back</button>
+        </div>
+      </div>
+      <div class="settings-grid" id="settingsGrid"></div>
+      <div id="settingsStatus" class="status"></div>
+    </section>
+  </main>
+
+  <div class="help">
+    <span>Arrows: Move systems | Enter: Library/Play | Esc: Back | S: Scanlines</span>
+    <span>Rainey Desktop opens games with the default macOS emulator for that file type</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

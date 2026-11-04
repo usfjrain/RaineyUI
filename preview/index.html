@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rainey Preview</title>
+  <style>
+    :root {
+      --bg: #050812;
+      --panel: rgba(17, 24, 39, .86);
+      --panel-soft: rgba(17, 24, 39, .58);
+      --blue: #21d4fd;
+      --purple: #b83bff;
+      --pink: #ff4fd8;
+      --text: #f4f7fb;
+      --muted: #a7b0c0;
+      --error: #ffc7d8;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(5, 8, 18, .1), rgba(10, 16, 36, .76), rgba(21, 11, 36, .95)),
+        repeating-linear-gradient(to bottom, transparent 0 38px, rgba(33, 212, 253, .13) 39px 41px, transparent 42px 76px),
+        repeating-linear-gradient(66deg, transparent 0 84px, rgba(184, 59, 255, .11) 85px 87px, transparent 88px 168px);
+      animation: gridDrift 10s linear infinite;
+    }
+
+    body::after {
+      content: "";
+      display: var(--scanlines, block);
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(0,0,0,.34) 0 1px, transparent 1px 5px);
+      opacity: .45;
+      mix-blend-mode: multiply;
+    }
+
+    @keyframes gridDrift {
+      from { background-position: 0 0, 0 0, 0 0; }
+      to { background-position: 0 0, 0 76px, 120px 0; }
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .view {
+      position: absolute;
+      inset: 0;
+      padding: 28px 36px;
+      opacity: 0;
+      transform: translateX(18px) scale(.985);
+      pointer-events: none;
+      transition: opacity .22s ease, transform .24s ease;
+    }
+
+    .view.active {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .splash {
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .brand-logo {
+      width: 210px;
+      height: 210px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 18px rgba(33, 212, 253, .54)) drop-shadow(0 0 34px rgba(184, 59, 255, .34));
+      animation: bootPulse .62s ease-in-out infinite alternate;
+    }
+
+    .splash p {
+      margin: 12px 0 0;
+      color: var(--blue);
+      font-size: 18px;
+    }
+
+    .bootbar {
+      width: min(420px, 42vw);
+      height: 8px;
+      margin: 34px auto 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,.15);
+      overflow: hidden;
+    }
+
+    .bootbar span {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      transform-origin: left;
+      animation: bootLoad 1.35s ease-out forwards;
+    }
+
+    .bootsweep {
+      position: fixed;
+      left: 22vw;
+      right: 22vw;
+      top: 30vh;
+      height: 5px;
+      background: var(--blue);
+      box-shadow: 0 0 24px rgba(33,212,253,.75);
+      animation: sweep 1.15s ease-in-out infinite;
+    }
+
+    @keyframes bootPulse { to { opacity: .62; } }
+    @keyframes bootLoad { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes sweep { 0% { transform: translateY(0); opacity: .1; } 45% { opacity: .85; } 100% { transform: translateY(42vh); opacity: .1; } }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .home-logo {
+      width: 132px;
+      height: 72px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 14px rgba(33, 212, 253, .34));
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button {
+      height: 54px;
+      border: 2px solid rgba(184, 59, 255, .55);
+      border-radius: 6px;
+      padding: 0 18px;
+      color: var(--text);
+      background: var(--panel);
+      font: inherit;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+
+    button:hover, button:focus, button.active {
+      outline: none;
+      border-color: var(--blue);
+      background: rgba(33, 212, 253, .2);
+      box-shadow: 0 0 0 5px rgba(33, 212, 253, .12), 0 0 24px rgba(184, 59, 255, .24);
+      transform: translateY(-1px);
+    }
+
+    .image-button {
+      width: 132px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .image-button img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .carousel-wrap {
+      height: calc(100vh - 160px);
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-behavior: smooth;
+      scrollbar-color: var(--blue) rgba(255,255,255,.08);
+      scrollbar-width: thin;
+      padding-bottom: 14px;
+      scroll-snap-type: x proximity;
+    }
+
+    .carousel-wrap::-webkit-scrollbar { height: 10px; }
+    .carousel-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,.08); border-radius: 999px; }
+    .carousel-wrap::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 999px; }
+
+    .carousel {
+      display: flex;
+      gap: 22px;
+      transition: transform .20s ease;
+      padding: 22px 0;
+      min-width: max-content;
+    }
+
+    .system-card {
+      flex: 0 0 242px;
+      height: 304px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.20);
+      border-radius: 8px;
+      background: rgba(5, 8, 18, .34);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      scroll-snap-align: center;
+      transition: width .25s ease, height .25s ease, transform .25s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .system-card.selected {
+      flex-basis: 286px;
+      height: 342px;
+      border: 3px solid var(--blue);
+      transform: scale(1.02);
+      box-shadow: 0 0 0 7px rgba(33, 212, 253, .10), 0 0 38px rgba(184, 59, 255, .32);
+    }
+
+    .system-card h3 {
+      margin: 14px 0 0;
+      font-size: 24px;
+    }
+
+    .system-card p, .meta, .empty p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .art {
+      position: relative;
+      overflow: hidden;
+      height: 190px;
+      border: 2px solid rgba(33, 212, 253, .55);
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--a), #090e23 52%, var(--b));
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .system-card.selected .art { height: 216px; border-color: var(--blue); }
+
+    .art.asset-art {
+      background: #080b16;
+    }
+
+    .art.asset-art::before,
+    .art.asset-art::after {
+      display: none;
+    }
+
+    .art.asset-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .art::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,.08) 0 7px, transparent 7px 34px);
+    }
+
+    .art::after {
+      content: "";
+      position: absolute;
+      inset: 12%;
+      border: 5px solid rgba(0,0,0,.28);
+    }
+
+    .art strong {
+      position: relative;
+      z-index: 1;
+      display: block;
+      font-size: 48px;
+      line-height: 1;
+      text-shadow: 0 2px 12px rgba(0,0,0,.65);
+    }
+
+    .art span {
+      position: relative;
+      z-index: 1;
+      display: block;
+      max-width: 86%;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(255,255,255,.82);
+    }
+
+    .rail {
+      margin-top: 18px;
+    }
+
+    .rail h3 {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: 16px;
+    }
+
+    .rail-items {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      min-height: 96px;
+    }
+
+    .rail-card {
+      flex: 0 0 250px;
+      height: 92px;
+      border: 2px solid rgba(255,255,255,.14);
+      border-radius: 8px;
+      background: rgba(5, 8, 18, .24);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .rail-card:hover, .game-card:hover, .game-list-item:hover {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 5px rgba(33, 212, 253, .10), 0 0 26px rgba(184, 59, 255, .24);
+    }
+
+    .rail-card .art {
+      flex: 0 0 58px;
+      height: 74px;
+    }
+
+    .rail-card .art strong { font-size: 21px; }
+    .rail-card .art span { display: none; }
+
+    .library-body {
+      height: calc(100vh - 330px);
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .grid {
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 16px;
+      overflow: auto;
+      padding-right: 8px;
+    }
+
+    .game-card {
+      min-height: 292px;
+      border: 2px solid rgba(255,255,255,.16);
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(5, 8, 18, .25);
+      cursor: pointer;
+    }
+
+    .game-card .art { height: 205px; }
+    .game-card .art strong { font-size: 32px; }
+    .game-card h4, .rail-card h4 {
+      margin: 10px 0 0;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .favorite { color: var(--pink); }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      overflow: auto;
+      height: 100%;
+      padding-right: 8px;
+    }
+
+    .game-list-item {
+      height: 70px;
+      border: 2px solid rgba(255,255,255,.14);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 14px;
+      background: rgba(5, 8, 18, .24);
+      cursor: pointer;
+    }
+
+    .game-list-item .art {
+      width: 48px;
+      height: 48px;
+      flex: 0 0 48px;
+    }
+
+    .game-list-item .art strong { font-size: 18px; }
+    .game-list-item .art span { display: none; }
+
+    .detail-layout {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      animation: detailIn .32s ease;
+    }
+
+    @keyframes detailIn {
+      from { opacity: 0; transform: translateX(28px) scale(.96); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .detail-art {
+      width: 270px;
+      height: 380px;
+      flex: 0 0 270px;
+      box-shadow: 0 0 0 7px rgba(33, 212, 253, .10), 0 0 38px rgba(184, 59, 255, .32);
+    }
+
+    .detail-copy {
+      max-width: 760px;
+    }
+
+    .detail-copy h2 {
+      font-size: clamp(32px, 4.8vw, 56px);
+      line-height: 1.05;
+    }
+
+    .detail-copy .system {
+      color: var(--blue);
+      margin: 10px 0 18px;
+      font-size: 18px;
+    }
+
+    .metadata {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+      font-size: 16px;
+    }
+
+    .metadata b { color: var(--muted); }
+
+    .status {
+      display: none;
+      width: fit-content;
+      max-width: min(680px, 80vw);
+      margin-top: 14px;
+      padding: 10px 14px;
+      border: 1px solid rgba(33,212,253,.72);
+      border-radius: 6px;
+      background: rgba(17,24,39,.92);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .status.show { display: block; }
+    .status.error {
+      border-color: #ff6b9a;
+      background: rgba(53, 16, 35, .92);
+      color: var(--error);
+    }
+
+    .empty {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .empty-mark {
+      width: 86px;
+      height: 86px;
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      border: 2px solid rgba(33,212,253,.55);
+      border-radius: 8px;
+      background: rgba(184,59,255,.12);
+      font-size: 42px;
+      font-weight: 900;
+    }
+
+    .settings-grid {
+      height: calc(100vh - 210px);
+      overflow: auto;
+      margin-top: 20px;
+      display: grid;
+      gap: 10px;
+      padding-right: 8px;
+    }
+
+    .setting-row {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .switch {
+      width: 58px;
+      height: 32px;
+      padding: 3px;
+      border-radius: 999px;
+      border: 2px solid var(--blue);
+      background: rgba(33,212,253,.2);
+    }
+
+    .switch span {
+      display: block;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--text);
+      transform: translateX(24px);
+      transition: transform .18s ease;
+    }
+
+    .toggle.off .switch span { transform: translateX(0); }
+
+    .help {
+      position: fixed;
+      left: 36px;
+      right: 36px;
+      bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(244,247,251,.64);
+      font-size: 12px;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    @media (max-width: 900px) {
+      .view { padding: 20px; }
+      .topbar { align-items: flex-start; }
+      h2 { font-size: 32px; }
+      .actions { gap: 8px; }
+      button { height: 48px; font-size: 14px; padding: 0 12px; }
+      .detail-layout { gap: 20px; }
+      .detail-art { width: 220px; height: 320px; flex-basis: 220px; }
+      .carousel-wrap { height: calc(100vh - 140px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="splash" class="view splash active" aria-label="Splash">
+      <div class="bootsweep"></div>
+      <div>
+        <img class="brand-logo" src="../assets/logo.png" alt="Rainey">
+        <p>BOOTING ARCADE FRONTEND</p>
+        <div class="bootbar"><span></span></div>
+      </div>
+    </section>
+
+    <section id="home" class="view" aria-label="Home">
+      <div class="topbar">
+        <div>
+          <img class="home-logo" src="../assets/logo.png" alt="Rainey">
+          <div class="subtitle">Select a system</div>
+        </div>
+        <div class="actions">
+          <button class="image-button" data-action="library" aria-label="Library">
+            <img src="../assets/library button 2.png" alt="Library">
+          </button>
+          <button class="image-button" data-action="settings" aria-label="Settings">
+            <img src="../assets/settings button.png" alt="Settings">
+          </button>
+        </div>
+      </div>
+      <div id="carouselWrap" class="carousel-wrap">
+        <div id="carousel" class="carousel"></div>
+      </div>
+      <div id="homeStatus" class="status"></div>
+    </section>
+
+    <section id="library" class="view" aria-label="Library">
+      <div class="topbar">
+        <div>
+          <h2 id="libraryTitle">Library</h2>
+          <div id="librarySubtitle" class="subtitle">0 games</div>
+        </div>
+        <div class="actions">
+          <button id="modeButton">List</button>
+          <button data-action="home">Back</button>
+        </div>
+      </div>
+      <div id="recentRail" class="rail"></div>
+      <div id="favoriteRail" class="rail"></div>
+      <div id="libraryStatus" class="status"></div>
+      <div id="libraryBody" class="library-body"></div>
+    </section>
+
+    <section id="detail" class="view" aria-label="Game detail">
+      <div id="detailBody" class="detail-layout"></div>
+    </section>
+
+    <section id="settings" class="view" aria-label="Settings">
+      <div class="topbar">
+        <div>
+          <h2>Settings</h2>
+          <div class="subtitle">ROM folders, theme, emulator paths</div>
+        </div>
+        <div class="actions">
+          <button id="scanButton">Scan Games</button>
+          <button data-action="home">Back</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div class="toggle" id="scanlineToggle">
+          <span>Scanline overlay</span>
+          <span class="switch"><span></span></span>
+        </div>
+        <div class="actions">
+          <button class="active">Neon Arcade</button>
+          <button>Midnight CRT</button>
+        </div>
+      </div>
+      <div id="settingsGrid" class="settings-grid"></div>
+      <div class="status show">This preview uses mock data. The Android app uses SAF folder picking and Room.</div>
+    </section>
+  </main>
+
+  <div class="help">
+    <span>D-pad / Arrows: Move focus | A / Enter: Select | B / Esc: Back</span>
+    <span>Start: Settings | L/R: Switch systems | S: Scanline toggle</span>
+  </div>
+
+  <script>
+    const systems = [
+      ["nes", "NES", "8-BIT", "neon grid"],
+      ["snes", "SNES", "16-BIT", "violet arcade"],
+      ["genesis", "Genesis", "BLAST", "blue speed lines"],
+      ["playstation", "PlayStation", "CD", "disc shimmer"],
+      ["psp", "PSP", "WIDE", "portable glow"],
+      ["dreamcast", "Dreamcast", "SWIRL", "white console light"],
+      ["arcade", "Arcade", "COIN", "cabinet lights"],
+      ["gba", "Game Boy Advance", "ADV", "handheld color"],
+      ["n64", "Nintendo 64", "64", "polygon haze"],
+      ["android", "Android Games", "PLAY", "native Android"]
+    ].map((s, index) => ({ id: s[0], name: s[1], logo: s[2], bg: s[3], index, asset: systemAsset(s[0]) }));
+
+    const games = [
+      game("nes", "Nebula Runner", "nes", true, true),
+      game("nes", "Pixel Quest DX", "nes", false, true),
+      game("nes", "Castle Circuit", "nes", false, false),
+      game("snes", "Chrome Valley", "sfc", true, true),
+      game("snes", "Moonlit GP", "smc", false, false),
+      game("genesis", "Vector Storm", "md", true, false),
+      game("genesis", "Midnight Streets", "gen", false, true),
+      game("playstation", "Orbit Rally", "chd", true, true),
+      game("playstation", "Echo Sector", "cue", false, false),
+      game("psp", "Pocket Drift", "iso", false, true),
+      game("dreamcast", "Signal Harbor", "gdi", true, false),
+      game("arcade", "Coin Rush 99", "zip", true, true),
+      game("gba", "Tiny Tactics", "gba", false, false),
+      game("n64", "Polygon Peaks", "z64", false, true),
+      game("android", "Horizon Chase", "app", true, true),
+      game("android", "Dead Cells", "app", false, true),
+      game("android", "Stardew Valley", "app", false, false)
+    ];
+
+    let screen = "splash";
+    let selectedSystem = 0;
+    let mode = "grid";
+    let selectedGame = games[0];
+    let scanlines = true;
+
+    function game(system, title, ext, favorite, recent) {
+      return {
+        id: `${system}-${title.toLowerCase().replaceAll(" ", "-")}`,
+        system,
+        title,
+        ext,
+        favorite,
+        recent,
+        year: "Unknown",
+        genre: "Unknown",
+        developer: "Unknown"
+      };
+    }
+
+    function show(id) {
+      screen = id;
+      document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
+      render();
+    }
+
+    function colorFor(text, offset) {
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      const r = 50 + Math.abs((hash >> (offset + 2)) % 120);
+      const g = 80 + Math.abs((hash >> offset) % 145);
+      const b = 110 + Math.abs(hash % 145);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function initials(text) {
+      const parts = text.trim().split(/\s+/).filter(Boolean);
+      return (parts.length ? parts.slice(0, 3).map(p => p[0].toUpperCase()).join("") : "R").slice(0, 3);
+    }
+
+    function systemAsset(id) {
+      return {
+        nes: "../assets/nes.png",
+        snes: "../assets/snes.png",
+        genesis: "../assets/sega genesis.png",
+        playstation: "../assets/ps1.png",
+        psp: "../assets/psp.png",
+        dreamcast: "../assets/sega dreamcast.png",
+        arcade: "../assets/arcade.png",
+        gba: "../assets/game boy advance.png",
+        n64: "../assets/nintendo 64.png",
+        android: "../assets/android.png"
+      }[id] || null;
+    }
+
+    function art(label, compact = false, asset = null) {
+      if (asset) {
+        return `<div class="art asset-art"><img src="${asset}" alt="${label}"></div>`;
+      }
+      return `<div class="art" style="--a:${colorFor(label, 4)};--b:${colorFor(label, 9)}">
+        <div><strong>${initials(label)}</strong>${compact ? "" : `<span>${label.toUpperCase()}</span>`}</div>
+      </div>`;
+    }
+
+    function renderHome() {
+      const carousel = document.getElementById("carousel");
+      carousel.innerHTML = systems.map((system, index) => `
+        <article class="system-card ${index === selectedSystem ? "selected" : ""}" data-system="${index}" tabindex="0">
+          ${art(system.logo, false, system.asset)}
+          <div>
+            <h3>${system.name}</h3>
+          </div>
+        </article>
+      `).join("");
+      carousel.style.transform = "none";
+      carousel.querySelectorAll(".system-card").forEach(card => {
+        card.addEventListener("click", () => {
+          selectedSystem = Number(card.dataset.system);
+          show("library");
+        });
+        card.addEventListener("focus", () => {
+          selectedSystem = Number(card.dataset.system);
+          renderHome();
+        });
+      });
+      requestAnimationFrame(() => {
+        const selected = carousel.querySelector(".system-card.selected");
+        if (selected && screen === "home") {
+          selected.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+      });
+    }
+
+    function systemGames() {
+      return games.filter(item => item.system === systems[selectedSystem].id);
+    }
+
+    function renderRail(id, title, list, emptyText) {
+      const node = document.getElementById(id);
+      node.innerHTML = `<h3>${title}</h3>` + (
+        list.length
+          ? `<div class="rail-items">${list.slice(0, 12).map(item => `
+              <article class="rail-card" data-game="${item.id}" tabindex="0">
+                ${art(item.title, true)}
+                <div>
+                  <h4 class="${item.favorite ? "favorite" : ""}">${item.favorite ? "★ " : ""}${item.title}</h4>
+                  <p class="meta">${item.ext.toUpperCase()}</p>
+                </div>
+              </article>
+            `).join("")}</div>`
+          : `<p class="meta">${emptyText}</p>`
+      );
+      node.querySelectorAll("[data-game]").forEach(card => {
+        card.addEventListener("click", () => openGame(card.dataset.game));
+      });
+    }
+
+    function renderLibrary() {
+      const system = systems[selectedSystem];
+      const list = systemGames();
+      document.getElementById("libraryTitle").textContent = system.name;
+      document.getElementById("librarySubtitle").textContent = `${list.length} games`;
+      document.getElementById("modeButton").textContent = mode === "grid" ? "List" : "Grid";
+      renderRail("recentRail", "Recently Played", games.filter(g => g.recent), "Launched games will appear here.");
+      renderRail("favoriteRail", "Favorites", list.filter(g => g.favorite), "Mark a game as favorite from its detail page.");
+      const body = document.getElementById("libraryBody");
+      if (!list.length) {
+        body.innerHTML = `<div class="empty"><div><div class="empty-mark">R</div><h2>No games scanned yet</h2><p>Add ROM folders in Settings, then scan your library.</p><br><button data-action="settings">Open Settings</button></div></div>`;
+        body.querySelector("button").addEventListener("click", () => show("settings"));
+        return;
+      }
+      body.innerHTML = mode === "grid"
+        ? `<div class="grid">${list.map(cardHtml).join("")}</div>`
+        : `<div class="list">${list.map(listHtml).join("")}</div>`;
+      body.querySelectorAll("[data-game]").forEach(card => {
+        card.addEventListener("click", () => openGame(card.dataset.game));
+      });
+    }
+
+    function cardHtml(item) {
+      return `<article class="game-card" data-game="${item.id}" tabindex="0">
+        ${art(item.title, true)}
+        <h4 class="${item.favorite ? "favorite" : ""}">${item.favorite ? "★ " : ""}${item.title}</h4>
+      </article>`;
+    }
+
+    function listHtml(item) {
+      return `<article class="game-list-item" data-game="${item.id}" tabindex="0">
+        ${art(item.title, true)}
+        <h4 class="${item.favorite ? "favorite" : ""}">${item.favorite ? "★ " : ""}${item.title}</h4>
+      </article>`;
+    }
+
+    function openGame(id) {
+      selectedGame = games.find(item => item.id === id) || games[0];
+      show("detail");
+    }
+
+    function renderDetail() {
+      const system = systems.find(item => item.id === selectedGame.system);
+      document.getElementById("detailBody").innerHTML = `
+        <div class="art detail-art" style="--a:${colorFor(selectedGame.title, 4)};--b:${colorFor(selectedGame.title, 9)}">
+          <div><strong>${initials(selectedGame.title)}</strong><span>${selectedGame.title.toUpperCase()}</span></div>
+        </div>
+        <div class="detail-copy">
+          <h2>${selectedGame.title}</h2>
+          <div class="system">${system ? system.name : selectedGame.system}</div>
+          <div class="actions">
+            <button id="playButton">Play</button>
+            <button id="favoriteButton" class="${selectedGame.favorite ? "active" : ""}">${selectedGame.favorite ? "Favorited" : "Favorite"}</button>
+            <button data-action="library">Back</button>
+          </div>
+          <div class="metadata">
+            <div><b>Year:</b> ${selectedGame.year}</div>
+            <div><b>Genre:</b> ${selectedGame.genre}</div>
+            <div><b>Developer:</b> ${selectedGame.developer}</div>
+            <div><b>Description:</b> Metadata placeholder. Add local editing or artwork import later.</div>
+          </div>
+          <div id="detailStatus" class="status"></div>
+        </div>`;
+      document.getElementById("playButton").addEventListener("click", () => {
+        const status = document.getElementById("detailStatus");
+        status.className = "status show error";
+        status.textContent = `Missing emulator for ${selectedGame.system}. Install/configure package: com.example.placeholder`;
+      });
+      document.getElementById("favoriteButton").addEventListener("click", () => {
+        selectedGame.favorite = !selectedGame.favorite;
+        renderDetail();
+      });
+      bindActions();
+    }
+
+    function renderSettings() {
+      document.getElementById("settingsGrid").innerHTML = systems.map(system => `
+        <div class="setting-row">
+          <div>
+            <strong>${system.name}</strong>
+            <p class="meta">No folder selected</p>
+          </div>
+          <button>Pick Folder</button>
+        </div>
+      `).join("") + `
+        <div class="setting-row">
+          <div>
+            <strong>Emulator/core paths</strong>
+            <p class="meta">External app mappings are placeholders in this version.</p>
+          </div>
+          <button>Configure</button>
+        </div>
+        <div class="setting-row">
+          <div>
+            <strong>Controller mapping</strong>
+            <p class="meta">Placeholder screen planned.</p>
+          </div>
+          <button>Open</button>
+        </div>`;
+    }
+
+    function render() {
+      renderHome();
+      renderLibrary();
+      renderSettings();
+      if (screen === "detail") renderDetail();
+      document.body.style.setProperty("--scanlines", scanlines ? "block" : "none");
+      document.getElementById("scanlineToggle").classList.toggle("off", !scanlines);
+      bindActions();
+    }
+
+    function bindActions() {
+      document.querySelectorAll("[data-action='home']").forEach(button => button.onclick = () => show("home"));
+      document.querySelectorAll("[data-action='library']").forEach(button => button.onclick = () => show("library"));
+      document.querySelectorAll("[data-action='settings']").forEach(button => button.onclick = () => show("settings"));
+    }
+
+    document.getElementById("modeButton").addEventListener("click", () => {
+      mode = mode === "grid" ? "list" : "grid";
+      renderLibrary();
+    });
+
+    document.getElementById("scanButton").addEventListener("click", () => {
+      const status = document.querySelector("#settings .status");
+      status.textContent = "Preview scan complete: mock games are already loaded.";
+      status.classList.add("show");
+    });
+
+    document.getElementById("scanlineToggle").addEventListener("click", () => {
+      scanlines = !scanlines;
+      render();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" || event.key === "Backspace") {
+        if (screen === "detail") show("library");
+        else if (screen === "library" || screen === "settings") show("home");
+      }
+      if (event.key === "Enter" && screen === "home") show("library");
+      if (event.key.toLowerCase() === "s") {
+        scanlines = !scanlines;
+        render();
+      }
+      if (event.key === "ArrowRight" && screen === "home") {
+        selectedSystem = Math.min(systems.length - 1, selectedSystem + 1);
+        renderHome();
+      }
+      if (event.key === "ArrowLeft" && screen === "home") {
+        selectedSystem = Math.max(0, selectedSystem - 1);
+        renderHome();
+      }
+      if (event.key.toLowerCase() === "m") show("settings");
+    });
+
+    document.getElementById("carouselWrap").addEventListener("wheel", event => {
+      if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+        event.currentTarget.scrollLeft += event.deltaY;
+        event.preventDefault();
+      }
+    }, { passive: false });
+
+    setTimeout(() => show("home"), 1450);
+    render();
+  </script>
+</body>
+</html>

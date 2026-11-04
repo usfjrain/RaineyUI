@@ -1,0 +1,10 @@
+#!/bin/sh /etc/rc.common
+# RaineyUI LED lights: start the preset watcher before runtrimui (S99) blocks.
+# Remove with: rm /etc/rc.d/S98zraineyleds /etc/init.d/raineyleds
+START=98
+
+start() {
+    [ -x /mnt/UDISK/Apps/RaineyUI/leds_watch.sh ] || return 0
+    pidof leds_watch.sh >/dev/null && return 0
+    start-stop-daemon -S -b -x /mnt/UDISK/Apps/RaineyUI/leds_watch.sh
+}
