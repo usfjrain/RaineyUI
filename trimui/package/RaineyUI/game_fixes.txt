@@ -1,6 +1,6 @@
 # Per-game RetroArch settings used by RaineyUI's launcher.
 # Format: <part of the ROM file name>|<retroarch.cfg line>
 #
-# NBA Showtime: with audio sync on, RetroArch waits for audio and the game runs at 1/4 speed
-# (15 fps); without it, it runs at 60 fps. (CountPerOp 2 also reaches 60 but freezes the game.)
-NBA Showtime|audio_sync = "false"
+# Don't use audio_sync = "false" to "speed up" a game: the N64 core returns one RetroArch frame per
+# picture the game draws, so low-frame-rate games (e.g. NBA Showtime, ~15 fps) only stay at the
+# right speed while RetroArch is synced to audio.
