@@ -10,6 +10,7 @@
 | libretro API header | `trimui/third_party/libretro.h` | MIT — <https://github.com/libretro/RetroArch> |
 | SDL2, SDL2_image, SDL2_ttf headers | `trimui/third_party/include/` | zlib — <https://libsdl.org> |
 | miniz | `trimui/third_party/miniz/` | MIT — <https://github.com/richgel999/miniz> |
+| stb_image_write (Sean Barrett) | `trimui/third_party/stb/` | Public domain / MIT — <https://github.com/nothings/stb> |
 | DejaVu Sans Mono | `trimui/package/RaineyUI/res/DejaVuSans*.ttf` | Bitstream Vera / DejaVu license (`res/DejaVu-LICENSE.txt`) |
 
 ## Downloaded at build or install time (not stored here)

@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# RaineyUI Screen Recorder service: SELECT + L1 + R1 records the screen.
+# Turn it off in the Screen Recorder app, or remove with: rm /etc/rc.d/S98zraineyrec /etc/init.d/raineyrec
+START=98
+
+start() {
+    D=/mnt/UDISK/Apps/ScreenRecorder
+    [ -x $D/rainey ] || return 0
+    grep -q '^enabled=1' /mnt/UDISK/RaineyUI/recorder.cfg 2>/dev/null || return 0
+    [ -f /tmp/rainey_rec.pid ] && kill -0 "$(cat /tmp/rainey_rec.pid)" 2>/dev/null && return 0
+    rm -f /tmp/rainey_rec.pid
+    LD_LIBRARY_PATH=/usr/trimui/lib start-stop-daemon -S -b -p /tmp/rainey_rec.pid -x $D/rainey -- --rec-daemon
+}

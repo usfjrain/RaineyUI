@@ -20,7 +20,7 @@ fi
 $ZIG cc -target aarch64-linux-gnu.2.33 -O2 -std=gnu11 -Wall -Wno-unused-function \
   -Ithird_party/include -Ithird_party/include/SDL2 -Ithird_party -Ithird_party/miniz \
   -D_REENTRANT -DMINIZ_NO_ZLIB_COMPATIBLE_NAMES -Wno-#pragma-messages \
-  src/main.c src/common.c src/gfx.c src/ui.c src/player.c src/leds.c src/leds_ui.c src/bg.c src/sort.c src/wifi.c src/installer.c third_party/miniz/miniz.c \
+  src/main.c src/common.c src/gfx.c src/ui.c src/player.c src/leds.c src/leds_ui.c src/bg.c src/sort.c src/wifi.c src/installer.c src/recorder.c src/recorder_ui.c third_party/miniz/miniz.c \
   -Ldevlibs -lSDL2 -lSDL2_image -lSDL2_ttf \
   -Wl,--no-as-needed -lpthread -ldl -lm -Wl,--allow-shlib-undefined -rdynamic \
   -o $OUT/rainey

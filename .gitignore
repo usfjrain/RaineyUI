@@ -56,4 +56,5 @@ trimui/third_party/*
 !trimui/third_party/include/
 !trimui/third_party/libretro.h
 !trimui/third_party/miniz/
+!trimui/third_party/stb/
 trimui/third_party/miniz/examples/

@@ -1,6 +1,7 @@
 #include "rainey.h"
 #include "libretro.h"
 #include "leds.h"
+#include "recorder.h"
 #include <dlfcn.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -59,10 +60,17 @@ int main(int argc, char **argv) {
         close(fd);
         return r < 0;
     }
+    if (argc >= 2 && !strcmp(argv[1], "--rec-daemon")) { /* screen recorder service */
+        mkdirs(DATA_DIR);
+        freopen(DATA_DIR "/recorder.log", "a", stderr);
+        setvbuf(stderr, NULL, _IOLBF, 0);
+        return rec_daemon_main();
+    }
     if (argc >= 4 && !strcmp(argv[1], "--unzip")) return unzip_cli(argv[2], argv[3]);           /* installer */
     if (argc >= 4 && !strcmp(argv[1], "--patch-core")) return patch_core_cli(argv[2], argv[3]); /* installer */
     bool play = argc >= 3 && !strcmp(argv[1], "--play");
     bool install = argc >= 3 && !strcmp(argv[1], "--install-ui");
+    bool recapp = argc >= 2 && !strcmp(argv[1], "--rec-app");
 
     settings_load();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
@@ -98,6 +106,7 @@ int main(int argc, char **argv) {
 
     int rc = play ? player_main(win, ren, argv[2])
              : install ? install_ui_main(win, ren, argv[2])
+             : recapp  ? recorder_app_main()
                        : ui_main(win, ren);
 
     gfx_quit();

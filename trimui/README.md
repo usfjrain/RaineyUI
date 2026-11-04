@@ -123,6 +123,21 @@ so a small boot hook keeps your preset applied: `/etc/init.d/raineyleds` (linked
 at power-on and each time MainUI restarts. To remove it:
 `rm /etc/rc.d/S98zraineyleds /etc/init.d/raineyleds` and reboot.
 
+## Screen Recorder app
+
+`recorder/ScreenRecorder` is a second app (Apps → Screen Recorder, same `rainey` binary):
+
+- Turn the recorder on, then press **SELECT + L1 + R1** in any game or app to start and stop.
+  The LEDs pulse red while recording. Video only (no sound), 1024x768 or 512x384 at 15/20/30 fps,
+  saved as Motion-JPEG `.mov` (plays in QuickTime, VLC, phones) in `/mnt/UDISK/Recordings`
+  (~65 MB per minute at 1024x768 / 20 fps; it stops by itself when storage runs low).
+- The service is `rainey --rec-daemon` (screen from `/dev/fb0`, the buffer on display), started at
+  boot by `/etc/init.d/raineyrec` while it's switched on. Log: `/mnt/UDISK/RaineyUI/recorder.log`.
+- File browser for Recordings, internal storage and the SD card: play recordings, view pictures,
+  delete files.
+
+Install over adb: `recorder/install_recorder.sh`.
+
 ## Install (from a release)
 
 **Easiest — SD card, no computer tools:** unzip `RaineyUI-Installer-TrimUI-<version>.zip` to the

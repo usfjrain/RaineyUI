@@ -1,0 +1,7 @@
+{
+"label":"Screen Recorder",
+"icon":"",
+"icontop":"icon.png",
+"launch":"launch.sh",
+"description":"Record your screen (SELECT + L1 + R1) and browse files"
+}
