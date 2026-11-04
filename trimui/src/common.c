@@ -33,6 +33,8 @@ const SystemDef SYSTEMS[] = {
      "retroarch", "Mupen64Plus GLES2 (RetroArch)"},
     {"nds", "Nintendo DS", {"NDS", "nds", NULL}, ",nds,zip,7z,", "emus/drastic/drastic_2.5.2.2",
      "nintendo_ds.png", false, "drastic", "DraStic"},
+    {"psp", "PSP", {"PSP", "psp", NULL}, ",iso,cso,pbp,", "emus/ppsspp/PPSSPPSDL_gl", "psp.png", false,
+     "ppsspp", "PPSSPP"},
 };
 const int NUM_SYSTEMS = sizeof SYSTEMS / sizeof SYSTEMS[0];
 

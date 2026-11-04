@@ -177,7 +177,8 @@ static void scan_dir(int sys, const char *dir, const char *folder, int depth) {
     char path[1024];
     static const char *skip_dirs[] = {"Imgs", "images", "media", "manuals", "videos", "boxart",
                                       "snap", "titles", "data", "cheats", "saves", "states",
-                                      "PPSSPP_STATE", "downloaded_images", NULL};
+                                      "PPSSPP_STATE", "SAVEDATA", "SYSTEM", "TEXTURES", "PLUGINS",
+                                      "Cheats", "downloaded_images", NULL};
     while ((e = readdir(d))) {
         if (e->d_name[0] == '.') continue;
         snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
@@ -827,6 +828,7 @@ static void detail_draw(void) {
     snprintf(buf, sizeof buf, "%s",
              !strcmp(ln, "retroarch") ? "In game: MENU = TrimUI menu (save/load/exit), MENU+START quits."
              : !strcmp(ln, "drastic") ? "In game: MENU opens the DraStic menu (Exit to return)."
+             : !strcmp(ln, "ppsspp")  ? "In game: MENU opens the PPSSPP menu (Exit to return)."
                                       : "In game: MENU or SELECT+START opens Rainey Options.");
     gfx_text(F_SMALL, buf, x, y + 8, C_MUTED, 255);
     static const char *h[] = {"A", "Select", "B", "Back", "Y", "Favorite", "←→", "Move"};

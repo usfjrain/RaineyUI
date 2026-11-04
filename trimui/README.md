@@ -11,7 +11,7 @@ Settings, and the in-game *Rainey Options* menu) with a built-in libretro player
 | What | Path on device |
 | --- | --- |
 | App (shows in MainUI → Apps) | `/mnt/UDISK/Apps/RaineyUI/` |
-| ROMs | `/mnt/UDISK/Roms/<FC SFC MD PS DC ARCADE GB GBA N64 NDS>/` (also scans `/mnt/SDCARD/Roms/` if an SD card is inserted) |
+| ROMs | `/mnt/UDISK/Roms/<FC SFC MD PS DC ARCADE GB GBA N64 NDS PSP>/` (also scans `/mnt/SDCARD/Roms/` if an SD card is inserted) |
 | BIOS / system files | `/mnt/UDISK/RaineyUI/bios/` (Dreamcast: `bios/dc/dc_boot.bin` + `dc_flash.bin`, optional) |
 | Saves (.srm) / states | `/mnt/UDISK/RaineyUI/saves/<system>/`, `/mnt/UDISK/RaineyUI/states/<system>/` |
 | Box art (optional) | `<rom folder>/Imgs/<game>.png` or `/mnt/UDISK/Imgs/<FOLDER>/<game>.png` |
@@ -37,10 +37,12 @@ Handed off to external emulators (GPU-accelerated / heavier systems), taken from
 | Nintendo 64 | RetroArch (`ra64.trimui`) + Mupen64Plus GLES2 | 512 MB `/mnt/UDISK/n64_swap` is enabled while playing |
 | Dreamcast | RetroArch + Flycast (GLES) | uses `bios/dc/dc_boot.bin` if present, otherwise Flycast HLE BIOS |
 | Nintendo DS | DraStic r2.5.2.2 | free DraStic BIOS built in; saves in `emus/drastic/backup` |
+| PSP | PPSSPP 1.17.1 (SDL, OpenGL ES) | `.iso` / `.cso` / `.pbp`; saves in `emus/ppsspp/.config/ppsspp/PSP/SAVEDATA` (saves found in an SD card's `psp/SAVEDATA` are copied there, the card is not changed) |
 
 They live in `emus/` inside the app. RetroArch config: `emus/RetroArch/retroarch.cfg`
-(per-system tuning in `.retroarch/config/{Flycast/DC,Mupen64Plus GLES2/N64}.*`).
-PSP and Android Games from the Android build are not included.
+(core options: `.retroarch/config/Mupen64Plus GLES2/Mupen64Plus GLES2.opt`; Dreamcast uses
+`Flycast/DC.opt` as a template and *Settings → Dreamcast resolution* picks the internal resolution).
+PPSSPP config: `emus/ppsspp/.config/ppsspp/PSP/SYSTEM/ppsspp.ini`. Android Games from the Android build are not included.
 
 ## Controls
 
@@ -48,7 +50,7 @@ UI: D-pad move, A select, B back, L/R page or switch system, START settings, Y f
 In game (built-in systems): MENU (or SELECT+START) opens Rainey Options: resume, reset,
 save/load state (L/R picks slot), video scale, scanlines, quit.
 N64 / Dreamcast (RetroArch): MENU opens the TrimUI in-game menu (save, load, exit); MENU+START quits.
-DS (DraStic): MENU opens the DraStic menu; choose Exit to return to RaineyUI. If A/B feel swapped, set *Settings → Button layout → Xbox*.
+DS (DraStic) and PSP (PPSSPP): MENU opens the emulator's menu; choose Exit to return to RaineyUI. If A/B feel swapped, set *Settings → Button layout → Xbox*.
 
 ## SD cards
 
@@ -57,7 +59,7 @@ RaineyUI only **reads** from it:
 
 - games in the TrimUI layout (`Roms/FC`, `Roms/SFC`, …) and in the EmulationStation / Batocera /
   Anbernic layout (`nes`, `snes`, `megadrive`, `mastersystem`, `gamegear`, `psx`, `dreamcast`,
-  `n64`, `nds`, `gb`, `gbc`, `gba`, `arcade`, `fbneo`, `neogeo`, `cps1-3`, `mame` at the card root);
+  `n64`, `nds`, `psp`, `gb`, `gbc`, `gba`, `arcade`, `fbneo`, `neogeo`, `cps1-3`, `mame` at the card root);
   `images/`, `manuals/`, `videos/` folders are skipped
 - box art from `images/<game>.png|jpg` (or `-image` suffix), `boxart/`, `Imgs/<FOLDER>/`
 - a `.srm` save next to a game is used on first play; new saves go to internal storage

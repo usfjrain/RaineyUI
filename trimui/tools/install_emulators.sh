@@ -7,7 +7,7 @@
 #
 # Sources:
 #   libretro cores    https://buildbot.libretro.com/nightly/linux/aarch64/latest/   (GPL etc.)
-#   RetroArch, Flycast, Mupen64Plus GLES2, DraStic and their TrimUI configs:
+#   RetroArch, Flycast, Mupen64Plus GLES2, DraStic, PPSSPP and their TrimUI configs:
 #                     https://github.com/cizia64/CrossMix-OS (GPL-3.0), pinned commit below
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -89,7 +89,28 @@ while IFS= read -r f; do
   mkdir -p "$WORK/RaineyUI/emus/drastic/$(dirname "$f")"
   get "$RAW/Emus/NDS/drastic/$(enc "$f")" "$WORK/RaineyUI/emus/drastic/$f"
 done < "$WORK/dl/drastic_files.txt"
-chmod +x "$RA/ra64.trimui" "$WORK/RaineyUI/emus/drastic/"drastic*
+echo "==> PPSSPP 1.17.1 (PSP, OpenGL ES build)"
+PSP_SRC=Emus/PSP/PPSSPP_1.17.1
+PSP="$WORK/RaineyUI/emus/ppsspp"
+PSP_SYS="$PSP/.config/ppsspp/PSP/SYSTEM"
+curl -fsSL "https://api.github.com/repos/cizia64/CrossMix-OS/git/trees/$CROSSMIX_SHA:$PSP_SRC/assets?recursive=1" \
+  | "$PY" -c "import json,sys; [print(x['path']) for x in json.load(sys.stdin)['tree'] if x['type']=='blob']" \
+  > "$WORK/dl/ppsspp_files.txt"
+while IFS= read -r f; do
+  mkdir -p "$PSP/assets/$(dirname "$f")"
+  get "$RAW/$PSP_SRC/assets/$(enc "$f")" "$PSP/assets/$f"
+done < "$WORK/dl/ppsspp_files.txt"
+get "$RAW/$PSP_SRC/PPSSPPSDL_gl" "$PSP/PPSSPPSDL_gl"
+mkdir -p "$PSP_SYS" "$PSP/.config/ppsspp/PSP/SAVEDATA" "$PSP/.config/ppsspp/PSP/PPSSPP_STATE"
+for f in ppsspp.ini controls.ini; do get "$RAW/$PSP_SRC/.config/ppsspp/PSP/SYSTEM/$f" "$PSP_SYS/$f"; done
+# RaineyUI's PSP folder, OpenGL backend; challenge-mode achievements would block save states
+sed -i.bak -e 's|^CurrentDirectory = .*|CurrentDirectory = /mnt/UDISK/Roms/PSP|' \
+    -e 's|^GraphicsBackend = .*|GraphicsBackend = 0 (OPENGL)|' \
+    -e 's|^AchievementsEnable = .*|AchievementsEnable = False|' \
+    -e 's|^AchievementsChallengeMode = .*|AchievementsChallengeMode = False|' "$PSP_SYS/ppsspp.ini"
+rm -f "$PSP_SYS/ppsspp.ini.bak"
+
+chmod +x "$RA/ra64.trimui" "$WORK/RaineyUI/emus/drastic/"drastic* "$PSP/PPSSPPSDL_gl"
 
 if [ -n "$STAGE" ]; then
   echo "Staged in $WORK/RaineyUI (cores/ and emus/)."
@@ -103,6 +124,7 @@ adb shell "mkdir -p $DEST/cores $DEST/emus /mnt/UDISK/RaineyUI/bios/dc"
 adb push "$WORK/RaineyUI/cores/." "$DEST/cores/"
 adb push "$WORK/RaineyUI/emus/RetroArch" "$DEST/emus/"
 adb push "$WORK/RaineyUI/emus/drastic" "$DEST/emus/"
-adb shell "chmod +x $DEST/emus/RetroArch/ra64.trimui $DEST/emus/drastic/drastic*; sync"
+adb push "$WORK/RaineyUI/emus/ppsspp" "$DEST/emus/"
+adb shell "mkdir -p /mnt/UDISK/Roms/PSP; chmod +x $DEST/emus/RetroArch/ra64.trimui $DEST/emus/drastic/drastic* $DEST/emus/ppsspp/PPSSPPSDL_gl; sync"
 rm -rf "$WORK"
 echo "Done. Emulators installed."

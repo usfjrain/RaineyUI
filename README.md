@@ -22,7 +22,7 @@ copyrighted artwork.** Use only games and BIOS files you are legally allowed to 
 - Home carousel, recently played, library grid/list, game details, favorites
 - Built-in libretro player with the *Rainey Options* menu (save/load states, video scale, scanlines)
 - NES, SNES, Genesis / Master System / Game Gear, PlayStation, Arcade / Neo Geo, Game Boy / Color,
-  Game Boy Advance (built-in player); Nintendo 64 and Dreamcast (RetroArch); Nintendo DS (DraStic)
+  Game Boy Advance (built-in player); Nintendo 64 and Dreamcast (RetroArch); Nintendo DS (DraStic); PSP (PPSSPP)
 - Reads SD cards as-is, including EmulationStation / Batocera / Anbernic folder layouts and their box art
 - LED lights: color + animation per light, 5 presets
 - Selectable menu backgrounds (static or animated, or your own pictures)

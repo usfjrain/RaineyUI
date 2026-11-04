@@ -65,8 +65,34 @@ static const char *folder_for_ext(const char *e) {
     if (ext_in(e, ",z64,n64,v64,")) return "N64";
     if (ext_in(e, ",nds,")) return "NDS";
     if (ext_in(e, ",gdi,cdi,")) return "DC";
+    if (ext_in(e, ",cso,")) return "PSP";
     if (ext_in(e, ",pbp,iso,")) return "PS";
     return NULL;
+}
+
+/* PSP UMD images carry "PSP GAME" as the ISO 9660 system identifier */
+static bool iso_is_psp(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+    char id[32] = {0};
+    bool ok = fseek(f, 0x8008, SEEK_SET) == 0 && fread(id, 1, sizeof id, f) == sizeof id;
+    fclose(f);
+    return ok && !memcmp(id, "PSP GAME", 8);
+}
+
+/* PS1 discs converted for the PSP (EBOOT.PBP) have a PSISOIMG/PSTITLEIMG data section */
+static bool pbp_is_psp(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+    unsigned char h[40];
+    char magic[8] = {0};
+    bool ok = fread(h, 1, sizeof h, f) == sizeof h && !memcmp(h, "\0PBP", 4);
+    if (ok) {
+        long psar = h[36] | h[37] << 8 | h[38] << 16 | (long)h[39] << 24;
+        ok = fseek(f, psar, SEEK_SET) == 0 && fread(magic, 1, 8, f) == 8;
+    }
+    fclose(f);
+    return ok && memcmp(magic, "PSISOIMG", 8) && memcmp(magic, "PSTITLEI", 8);
 }
 
 static bool chd_is_dreamcast(const char *path) {
@@ -174,6 +200,8 @@ static void sort_file(Report *r, const char *path, const char *name) {
     else if (ext_in(e, ",7z,")) folder = "ARCADE";
     else if (ext_in(e, ",chd,")) folder = chd_is_dreamcast(path) ? "DC" : "PS";
     else if (ext_in(e, ",bin,")) folder = "MD";
+    else if (ext_in(e, ",iso,")) folder = iso_is_psp(path) ? "PSP" : "PS";
+    else if (ext_in(e, ",pbp,")) folder = pbp_is_psp(path) ? "PSP" : "PS";
     else folder = folder_for_ext(e);
     if (folder) {
         snprintf(dir, sizeof dir, "%s/%s", ROMS_INTERNAL, folder);

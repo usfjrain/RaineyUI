@@ -56,6 +56,19 @@ while true; do
         cd "$progdir"
         [ "$SYS" = "n64" ] && swapoff $SWAP 2>/dev/null
         ;;
+    ppsspp)
+        cd "$progdir/emus/ppsspp"
+        MS=$PWD/.config/ppsspp/PSP
+        mkdir -p "$MS/SAVEDATA"
+        # bring over saves from an SD card made on another device (read-only: the card is never changed)
+        for d in /mnt/SDCARD/psp/SAVEDATA/* /mnt/SDCARD/PSP/SAVEDATA/*; do
+            [ -d "$d" ] && [ ! -e "$MS/SAVEDATA/${d##*/}" ] && cp -r "$d" "$MS/SAVEDATA/" && echo "psp: imported save ${d##*/}" >> "$LOG"
+        done
+        swap_on
+        HOME="$PWD" ./PPSSPPSDL_gl "$ROM" >> "$LOG" 2>&1
+        swapoff $SWAP 2>/dev/null
+        cd "$progdir"
+        ;;
     drastic)
         cd "$progdir/emus/drastic"
         echo "drastic output suppressed (very chatty)" >> "$LOG"
