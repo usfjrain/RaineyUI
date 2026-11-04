@@ -51,6 +51,7 @@ typedef struct {
     int scale;            /* 0 auto(aspect fit), 1-4 fixed integer, 5 stretch */
     char background[96];  /* background name ("" = default) */
     int bg_dim;           /* 0 dim, 1 normal, 2 bright */
+    int dc_res;           /* Dreamcast internal resolution, index into DC_RES */
 } Settings;
 
 extern Settings g_settings;

@@ -76,6 +76,7 @@ void settings_load(void) {
         else if (!strcmp(k, "smooth")) g_settings.smooth = v;
         else if (!strcmp(k, "scale")) g_settings.scale = (v >= 0 && v <= 5) ? v : 0;
         else if (!strcmp(k, "bg_dim")) g_settings.bg_dim = (v >= 0 && v <= 2) ? v : 1;
+        else if (!strcmp(k, "dc_res")) g_settings.dc_res = (v >= 0 && v <= 4) ? v : 0;
         else if (!strcmp(k, "background"))
             snprintf(g_settings.background, sizeof g_settings.background, "%s", val);
     }
@@ -86,9 +87,10 @@ void settings_save(void) {
     mkdirs(DATA_DIR);
     FILE *f = fopen(DATA_DIR "/settings.cfg", "w");
     if (!f) return;
-    fprintf(f, "scanlines=%d\ngame_scanlines=%d\nswap_ab=%d\nsmooth=%d\nscale=%d\nbg_dim=%d\nbackground=%s\n",
+    fprintf(f, "scanlines=%d\ngame_scanlines=%d\nswap_ab=%d\nsmooth=%d\nscale=%d\nbg_dim=%d\ndc_res=%d\nbackground=%s\n",
             g_settings.scanlines, g_settings.game_scanlines, g_settings.swap_ab,
-            g_settings.smooth, g_settings.scale, g_settings.bg_dim, g_settings.background);
+            g_settings.smooth, g_settings.scale, g_settings.bg_dim, g_settings.dc_res,
+            g_settings.background);
     fclose(f);
     sync();
 }

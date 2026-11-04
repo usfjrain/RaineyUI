@@ -961,8 +961,12 @@ static void collections_input(InputState *in) {
     }
 }
 
-enum { SET_BG, SET_BG_DIM, SET_SCANLINES, SET_GAME_SCANLINES, SET_LAYOUT, SET_SCALE, SET_SMOOTH, SET_LEDS, SET_WIFI, SET_RESCAN, SET_EXIT, SET_N };
+enum { SET_BG, SET_BG_DIM, SET_SCANLINES, SET_GAME_SCANLINES, SET_LAYOUT, SET_SCALE, SET_SMOOTH, SET_DC_RES, SET_LEDS, SET_WIFI, SET_RESCAN, SET_EXIT, SET_N };
 static const char *scale_names[] = {"Auto", "1x", "2x", "3x", "4x", "Stretch"};
+/* keep in sync with launch.sh */
+static const char *dc_res_names[] = {"640x480", "800x600", "960x720", "1024x768", "1280x960"};
+static const char *dc_res_notes[] = {"native, fastest", "sharper", "sharper", "sharpest, matches screen",
+                                     "slow in most games"};
 
 static void settings_draw(void) {
     gfx_text(F_HUGE, "Settings", 28, 18, C_TEXT, 255);
@@ -985,7 +989,7 @@ static void settings_draw(void) {
     int y = 118 - (int)set_scroll;
     const char *labels[SET_N] = {"Background", "Background brightness",
                                  "Scanlines (menus)", "Scanlines (in game)", "Button layout",
-                                 "Video scale", "Smooth video", "LED lights", "Wi-Fi transfer", "Rescan games",
+                                 "Video scale", "Smooth video", "Dreamcast resolution", "LED lights", "Wi-Fi transfer", "Rescan games",
                                  "Exit RaineyUI"};
     for (int i = 0; i < SET_N; i++) {
         bool f = set_focus == i;
@@ -1057,6 +1061,16 @@ static void settings_draw(void) {
             }
             break;
         }
+        case SET_DC_RES: {
+            char v[64];
+            snprintf(v, sizeof v, "‹ %s ›", dc_res_names[g_settings.dc_res]);
+            int vw = gfx_text_w(F_LABEL, v);
+            gfx_text(F_LABEL, v, rx - vw, y + 9, f ? C_NEON_BLUE : C_TEXT, 255);
+            const char *n = dc_res_notes[g_settings.dc_res];
+            gfx_text(F_SMALL, n, rx - vw - 16 - gfx_text_w(F_SMALL, n), y + 14,
+                     g_settings.dc_res == 4 ? C_NEON_PINK : C_MUTED, 255);
+            break;
+        }
         case SET_LEDS: {
             char sub[48];
             if (!led_cur.on) snprintf(sub, sizeof sub, "Off");
@@ -1121,6 +1135,7 @@ static void settings_input(InputState *in) {
         break;
     }
     case SET_BG_DIM: g_settings.bg_dim = (g_settings.bg_dim + 3 + d) % 3; break;
+    case SET_DC_RES: g_settings.dc_res = (g_settings.dc_res + 5 + d) % 5; break;
     case SET_LEDS:
         changed = false;
         if (in->pressed[B_A] || in->pressed[B_RIGHT]) {

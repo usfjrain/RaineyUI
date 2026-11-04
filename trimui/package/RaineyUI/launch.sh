@@ -29,15 +29,30 @@ while true; do
     echo performance > $GOV 2>/dev/null
     case "$LAUNCHER" in
     retroarch)
+        # RetroArch's per-folder overrides only match the internal N64/DC folder names, so games
+        # from SD folders like n64/ or dreamcast/ fell back to integer scaling (a small box).
+        # Give every N64/Dreamcast game the same full-screen settings, whatever folder it is in.
+        APPEND=/tmp/rainey_ra.cfg
+        printf '%s\n' 'auto_overrides_enable = "false"' 'game_specific_options = "false"' \
+            'video_scale_integer = "false"' 'aspect_ratio_index = "22"' 'video_shader_enable = "false"' > $APPEND
         if [ "$SYS" = "dreamcast" ]; then
+            CFG="$RA_DIR/.retroarch/config/Flycast"
+            # DC.opt is the tuned template; Flycast.opt is the file RetroArch reads
+            cp "$CFG/DC.opt" "$CFG/Flycast.opt"
             # use the real BIOS when present, otherwise Flycast's HLE BIOS
-            OPT="$RA_DIR/.retroarch/config/Flycast/DC.opt"
             if [ -f $DATA/bios/dc/dc_boot.bin ]; then HLE=disabled; else HLE=enabled; fi
-            sed -i "s/^reicast_hle_bios = .*/reicast_hle_bios = \"$HLE\"/" "$OPT"
+            # internal resolution from RaineyUI settings (same order as dc_res_names in ui.c)
+            case "$(sed -n 's/^dc_res=//p' $DATA/settings.cfg 2>/dev/null)" in
+                1) RES=800x600 ;; 2) RES=960x720 ;; 3) RES=1024x768 ;; 4) RES=1280x960 ;; *) RES=640x480 ;;
+            esac
+            sed -i -e "s/^reicast_hle_bios = .*/reicast_hle_bios = \"$HLE\"/" \
+                   -e "s/^reicast_internal_resolution = .*/reicast_internal_resolution = \"$RES\"/" "$CFG/Flycast.opt"
+            printf '%s\n' 'input_player1_analog_dpad_mode = "0"' 'audio_max_timing_skew = "0.050000"' >> $APPEND
+            echo "dreamcast: $RES, hle_bios=$HLE" >> "$LOG"
         fi
         [ "$SYS" = "n64" ] && swap_on
         cd "$RA_DIR"
-        HOME="$RA_DIR" ./ra64.trimui -v -c "$RA_DIR/retroarch.cfg" -L "$CORE" "$ROM" >> "$LOG" 2>&1
+        HOME="$RA_DIR" ./ra64.trimui -v -c "$RA_DIR/retroarch.cfg" --appendconfig $APPEND -L "$CORE" "$ROM" >> "$LOG" 2>&1
         cd "$progdir"
         [ "$SYS" = "n64" ] && swapoff $SWAP 2>/dev/null
         ;;
