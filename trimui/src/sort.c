@@ -122,6 +122,25 @@ static const char *folder_for_zip(const char *path) {
     return res ? res : "ARCADE"; /* MAME/FBNeo sets hold extension-less ROM chips */
 }
 
+static const char *bios_dest(const char *name);
+
+/* Stock folder (e.g. "SFC") for a game file found in a folder the user picked in Settings →
+ * ROM folders, or NULL when it isn't a game. Only reads the file; nothing is moved. */
+const char *rom_folder_guess(const char *path) {
+    const char *name = strrchr(path, '/');
+    name = name ? name + 1 : path;
+    const char *e = ext_of(name);
+    if (!strcasecmp(name, "neogeo.zip") || bios_dest(name)) return NULL;
+    if (ext_in(e, ",zip,")) return folder_for_zip(path);
+    if (ext_in(e, ",7z,")) return "ARCADE";
+    if (ext_in(e, ",chd,")) return chd_is_dreamcast(path) ? "DC" : "PS";
+    if (ext_in(e, ",bin,")) return "MD"; /* disc track files are skipped by the caller */
+    if (ext_in(e, ",iso,")) return iso_is_psp(path) ? "PSP" : "PS";
+    if (ext_in(e, ",pbp,")) return pbp_is_psp(path) ? "PSP" : "PS";
+    if (ext_in(e, ",cue,m3u,")) return "PS";
+    return folder_for_ext(e);
+}
+
 static const char *bios_dest(const char *name) {
     static const char *dc[] = {"dc_boot.bin", "dc_flash.bin", "dc_bios.bin", "dc_nvmem.bin"};
     for (size_t i = 0; i < sizeof dc / sizeof *dc; i++)

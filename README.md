@@ -24,6 +24,10 @@ copyrighted artwork.** Use only games and BIOS files you are legally allowed to 
 - NES, SNES, Genesis / Master System / Game Gear, PlayStation, Arcade / Neo Geo, Game Boy / Color,
   Game Boy Advance (built-in player); Nintendo 64 and Dreamcast (RetroArch); Nintendo DS (DraStic); PSP (PPSSPP)
 - Reads SD cards as-is, including EmulationStation / Batocera / Anbernic folder layouts and their box art
+- *Settings → ROM folders*: pick any folder on the SD card or internal storage with a built-in
+  folder browser; each game's system is detected automatically (or set it per folder)
+- Ports: PortMaster is installed alongside RaineyUI (on internal storage) and ports show up as a
+  *Ports* system on the home screen
 - LED lights: color + animation per light, 5 presets
 - Selectable menu backgrounds (static or animated, or your own pictures)
 - Wi-Fi transfer page and a *Send to Brick* drag-and-drop Mac app; files are sorted automatically

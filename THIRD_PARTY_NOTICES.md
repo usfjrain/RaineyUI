@@ -20,6 +20,9 @@
 | libretro cores: FCEUmm, Snes9x, Genesis Plus GX, PCSX ReARMed, FinalBurn Neo, Gambatte, mGBA | TrimUI, Android | <https://buildbot.libretro.com> (source: <https://github.com/libretro>) | GPL-2.0/GPL-3.0 and non-commercial licenses per core (see each project) |
 | RetroArch (`ra64.trimui`), Flycast, Mupen64Plus GLES2 + TrimUI configs | TrimUI | [CrossMix-OS](https://github.com/cizia64/CrossMix-OS) (pinned in `trimui/tools/install_emulators.sh`) | GPL-3.0 (RetroArch, Flycast, Mupen64Plus: GPL-2.0+) |
 | PPSSPP 1.17.1 (SDL build for TrimUI) + assets and config | TrimUI | [CrossMix-OS](https://github.com/cizia64/CrossMix-OS) (source: <https://github.com/hrydgard/ppsspp>) | GPL-2.0+ |
+| PortMaster (`trimui.portmaster.zip`, release 2026.11.02-0433) | TrimUI | <https://github.com/PortsMaster/PortMaster-GUI> | MIT (bundled tools: see its `licenses/` folder) |
+| Python 3.11 standalone build | TrimUI (PortMaster) | <https://github.com/astral-sh/python-build-standalone> | PSF-2.0 (bundled libraries: see the build's licenses) |
+| bash 5.2 (static) | TrimUI (ports) | <https://github.com/robxu9/bash-static> (source: <https://www.gnu.org/software/bash/>) | GPL-3.0 |
 | DraStic | TrimUI | [CrossMix-OS](https://github.com/cizia64/CrossMix-OS) — DraStic by Exophase | Freeware, closed source |
 | SDL2 runtime libraries | TrimUI (linking) | the TrimUI firmware on the device | zlib |
 | zig toolchain | TrimUI build | <https://ziglang.org> | MIT |

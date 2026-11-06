@@ -1,0 +1,34 @@
+#!/bin/sh
+# Minimal pgrep/pkill for PortMaster scripts (the stock firmware's BusyBox has neither).
+#   pgrep [-f] PATTERN      pkill [-SIGNAL] [-f] PATTERN
+# PATTERN is an extended regex matched against the process name, or the full command line with -f.
+SIG=TERM FULL=0 KILL=0
+[ "${0##*/}" = pkill ] && KILL=1
+while [ $# -gt 1 ]; do
+    case "$1" in
+    -f) FULL=1 ;;
+    -[0-9]* | -[A-Z]*) SIG=${1#-} ;;
+    -*) ;;
+    *) break ;;
+    esac
+    shift
+done
+PAT=$1
+[ -n "$PAT" ] || { echo "usage: ${0##*/} [-f] pattern" >&2; exit 2; }
+FOUND=1
+for d in /proc/[0-9]*; do
+    p=${d#/proc/}
+    [ "$p" = $$ ] && continue
+    if [ $FULL = 1 ]; then
+        s=$( { tr '\0' ' ' < $d/cmdline; } 2>/dev/null)
+    else
+        s=$( { cat $d/comm; } 2>/dev/null)
+    fi
+    [ -n "$s" ] || continue
+    echo "$s" | grep -qE -- "$PAT" || continue
+    # skip this script and the shell that runs it
+    case "$s" in *"/pgrep "* | *"/pkill "* | "pgrep "* | "pkill "*) continue ;; esac
+    FOUND=0
+    if [ $KILL = 1 ]; then kill -$SIG $p 2>/dev/null; else echo $p; fi
+done
+exit $FOUND

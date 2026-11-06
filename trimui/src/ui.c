@@ -27,7 +27,7 @@ typedef struct {
     bool incomplete; /* disc index whose track files are missing */
 } Game;
 
-typedef enum { S_SPLASH, S_HOME, S_LIBRARY, S_DETAIL, S_COLLECTIONS, S_SETTINGS, S_LEDS, S_WIFI } Screen;
+typedef enum { S_SPLASH, S_HOME, S_LIBRARY, S_DETAIL, S_COLLECTIONS, S_SETTINGS, S_LEDS, S_WIFI, S_FOLDERS, S_BROWSE } Screen;
 
 static Game *games;
 static int ngames, cap_games;
@@ -44,6 +44,16 @@ typedef struct {
 } Recent;
 static Recent recents[24];
 static int nrecents;
+
+/* folders the user added in Settings → ROM folders (read-only, wherever they are) */
+typedef struct {
+    char *path;
+    int sys;   /* system index, or -1 to tell each game's system from its file */
+    int count; /* games found there at the last scan */
+} RomFolder;
+#define MAX_ROM_FOLDERS 32
+static RomFolder rfolders[MAX_ROM_FOLDERS];
+static int nrfolders;
 
 /* ui state */
 static Screen screen = S_SPLASH;
@@ -165,6 +175,25 @@ static long long game_size(Game *g) {
     return g->size;
 }
 
+static const char *skip_dirs[] = {"Imgs", "images", "media", "manuals", "videos", "boxart",
+                                  "snap", "titles", "data", "cheats", "saves", "states",
+                                  "PPSSPP_STATE", "SAVEDATA", "SYSTEM", "TEXTURES", "PLUGINS",
+                                  "Cheats", "downloaded_images", "bios", "System Volume Information",
+                                  "LOST.DIR", "Android", NULL};
+
+static bool skip_dir(const char *name) {
+    for (int k = 0; skip_dirs[k]; k++)
+        if (!strcasecmp(name, skip_dirs[k])) return true;
+    return false;
+}
+
+static bool is_dir_entry(const struct dirent *e, const char *path) {
+    if (e->d_type == DT_DIR) return true;
+    if (e->d_type == DT_REG) return false;
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
 static void scan_dir(int sys, const char *dir, const char *folder, int depth) {
     DIR *d = opendir(dir);
     if (!d) return;
@@ -175,10 +204,6 @@ static void scan_dir(int sys, const char *dir, const char *folder, int depth) {
     bool has_gdi = !strcmp(s->id, "dreamcast") && dir_has_ext(dir, "gdi");
     struct dirent *e;
     char path[1024];
-    static const char *skip_dirs[] = {"Imgs", "images", "media", "manuals", "videos", "boxart",
-                                      "snap", "titles", "data", "cheats", "saves", "states",
-                                      "PPSSPP_STATE", "SAVEDATA", "SYSTEM", "TEXTURES", "PLUGINS",
-                                      "Cheats", "downloaded_images", NULL};
     while ((e = readdir(d))) {
         if (e->d_name[0] == '.') continue;
         snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
@@ -191,10 +216,7 @@ static void scan_dir(int sys, const char *dir, const char *folder, int depth) {
             isdir = S_ISDIR(st.st_mode);
         }
         if (isdir) {
-            bool skip = depth >= 2;
-            for (int k = 0; skip_dirs[k] && !skip; k++)
-                if (!strcasecmp(e->d_name, skip_dirs[k])) skip = true;
-            if (!skip) scan_dir(sys, path, folder, depth + 1);
+            if (depth < 2 && !skip_dir(e->d_name)) scan_dir(sys, path, folder, depth + 1);
             continue;
         }
         if (!ext_ok(s, e->d_name)) continue;
@@ -229,6 +251,171 @@ static void free_games(void) {
     }
 }
 
+static void ui_save_state(void);
+static bool is_ports(int sys) { return !strcmp(SYSTEMS[sys].launcher, "port"); }
+
+/* system whose folder names include this one (nes, SFC, psx, Dreamcast…), or -1 */
+static int sys_for_folder_name(const char *name) {
+    for (int s = 0; s < NUM_SYSTEMS; s++) {
+        if (is_ports(s)) continue;
+        for (int f = 0; f < 16 && SYSTEMS[s].folders[f]; f++)
+            if (!strcasecmp(SYSTEMS[s].folders[f], name)) return s;
+    }
+    return -1;
+}
+
+/* folders of systems RaineyUI can't play: their discs (.iso/.cue/.chd) and .zip files would
+ * otherwise look like PlayStation or arcade games */
+static const char *other_sys_dirs[] = {
+    "3do", "saturn", "ss", "segacd", "megacd", "sega32x", "32x", "ps2", "ps3", "psvita", "vita",
+    "pcengine", "pcenginecd", "pce", "tg16", "tgcd", "turbografx", "supergrafx", "pcfx", "neogeocd",
+    "wii", "wiiu", "gc", "ngc", "gamecube", "wii&ngc", "xbox", "xbox360", "switch", "3ds", "n3ds",
+    "n64dd", "amiga", "amiga500", "amiga1200", "amigacd32", "amigacdtv", "cdi", "cdimono1", "jaguar",
+    "jaguarcd", "atarist", "atari800", "atari5200", "atari7800", "atari2600", "lynx", "dos", "pc",
+    "pc88", "pc98", "x68000", "x1", "msx", "msx1", "msx2", "msx2+", "msxturbor", "c64", "c128",
+    "c20", "cplus4", "pet", "amstradcpc", "zxspectrum", "zx81", "thomson", "naomi", "naomi2",
+    "atomiswave", "daphne", "model2", "model3", "scummvm", "openbor", "pico8", "tic80", "easyrpg",
+    "ports", "lutro", "pygame", "moonlight", "vectrex", "colecovision", "intellivision", "o2em",
+    "videopac", "channelf", "wswan", "wswanc", "ngp", "ngpc", "virtualboy", "pokemini",
+    "gameandwatch", "satellaview", "sufami", "snes-msu1", "gx4000", "lightgun", NULL};
+
+static bool other_sys_dir(const char *name) {
+    for (int k = 0; other_sys_dirs[k]; k++)
+        if (!strcasecmp(name, other_sys_dirs[k])) return true;
+    return false;
+}
+
+/* A folder picked in Settings with "Auto": folders named after a system are read as that
+ * system, other files are matched by their type (and contents for .iso/.pbp/.chd/.zip). */
+static void scan_auto(const char *dir, int depth) {
+    const char *base = strrchr(dir, '/');
+    base = base ? base + 1 : dir;
+    int fs = sys_for_folder_name(base);
+    if (fs >= 0) {
+        scan_dir(fs, dir, SYSTEMS[fs].folders[0], 0);
+        return;
+    }
+    if (other_sys_dir(base)) return; /* pick a system for it in Settings to read it anyway */
+    DIR *d = opendir(dir);
+    if (!d) return;
+    bool has_m3u = dir_has_ext(dir, "m3u"), has_gdi = dir_has_ext(dir, "gdi");
+    bool has_cue = has_m3u || dir_has_ext(dir, "cue");
+    struct dirent *e;
+    char path[1024];
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+        if (is_dir_entry(e, path)) {
+            if (depth < 3 && !skip_dir(e->d_name)) scan_auto(path, depth + 1);
+            continue;
+        }
+        const char *x = ext_of(e->d_name);
+        /* disc track files belong to the .cue / .gdi / .m3u next to them */
+        if ((has_cue || has_gdi) && (!strcasecmp(x, "bin") || !strcasecmp(x, "img") || !strcasecmp(x, "raw")))
+            continue;
+        if ((has_m3u || has_gdi) && !strcasecmp(x, "cue")) continue;
+        const char *folder = rom_folder_guess(path);
+        /* .zip/.7z with no recognisable game file inside: arcade sets, but only trusted in a
+         * folder named arcade / mame / fbneo / neogeo… (handled above) */
+        if (folder && !strcmp(folder, "ARCADE")) folder = NULL;
+        int gs = folder ? sys_for_folder_name(folder) : -1;
+        if (gs >= 0 && ext_ok(&SYSTEMS[gs], e->d_name)) add_game(gs, path, folder);
+    }
+    closedir(d);
+}
+
+static char *xml_tag(const char *from, const char *end, const char *tag) {
+    char open[32], close[32];
+    snprintf(open, sizeof open, "<%s>", tag);
+    snprintf(close, sizeof close, "</%s>", tag);
+    const char *a = strstr(from, open);
+    if (!a || a >= end) return NULL;
+    a += strlen(open);
+    const char *b = strstr(a, close);
+    if (!b || b > end) return NULL;
+    while (a < b && isspace((unsigned char)*a)) a++;
+    while (b > a && isspace((unsigned char)b[-1])) b--;
+    if (b - a >= 2 && a[0] == '.' && a[1] == '/') a += 2;
+    char *out = malloc(b - a + 1), *o = out;
+    static const char *ent[][2] = {{"&amp;", "&"}, {"&apos;", "'"}, {"&quot;", "\""}, {"&lt;", "<"}, {"&gt;", ">"}};
+    while (a < b) {
+        size_t k = 0;
+        for (; k < 5; k++)
+            if (!strncmp(a, ent[k][0], strlen(ent[k][0]))) break;
+        if (k < 5) {
+            *o++ = ent[k][1][0];
+            a += strlen(ent[k][0]);
+        } else {
+            *o++ = *a++;
+        }
+    }
+    *o = 0;
+    return out;
+}
+
+/* PortMaster ports: the .sh scripts in PORTS_DIR. Titles and pictures come from the
+ * gameinfo.xml each port puts in its folder. */
+static void scan_ports(int sys) {
+    DIR *d = opendir(PORTS_DIR);
+    if (!d) return;
+    struct dirent *e;
+    char path[1024];
+    int first = ngames;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(path, sizeof path, "%s/%s", PORTS_DIR, e->d_name);
+        if (!is_dir_entry(e, path) && !strcasecmp(ext_of(e->d_name), "sh")) add_game(sys, path, "PORTS");
+    }
+    rewinddir(d);
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(path, sizeof path, "%s/%s/gameinfo.xml", PORTS_DIR, e->d_name);
+        FILE *f = fopen(path, "r");
+        if (!f) continue;
+        static char xml[64 * 1024];
+        size_t n = fread(xml, 1, sizeof xml - 1, f);
+        fclose(f);
+        xml[n] = 0;
+        for (char *g = strstr(xml, "<game>"); g; g = strstr(g + 6, "<game>")) {
+            char *end = strstr(g, "</game>");
+            if (!end) break;
+            char *script = xml_tag(g, end, "path"), *title = xml_tag(g, end, "name"), *img = xml_tag(g, end, "image");
+            if (script) {
+                char sp[1024];
+                snprintf(sp, sizeof sp, "%s/%s", PORTS_DIR, script);
+                for (int i = first; i < ngames; i++) {
+                    if (strcmp(games[i].path, sp)) continue;
+                    if (title && *title) {
+                        free(games[i].name);
+                        games[i].name = strdup(title);
+                    }
+                    if (img && *img) {
+                        char ip[1024];
+                        snprintf(ip, sizeof ip, "%s/%s", PORTS_DIR, img);
+                        if (file_exists(ip)) {
+                            games[i].art_path = strdup(ip);
+                            games[i].art_checked = true;
+                        }
+                    }
+                }
+            }
+            free(script);
+            free(title);
+            free(img);
+        }
+    }
+    closedir(d);
+}
+
+static void rfolders_count(void) {
+    for (int k = 0; k < nrfolders; k++) {
+        size_t l = strlen(rfolders[k].path);
+        rfolders[k].count = 0;
+        for (int i = 0; i < ngames; i++)
+            if (!strncmp(games[i].path, rfolders[k].path, l) && games[i].path[l] == '/') rfolders[k].count++;
+    }
+}
+
 static void scan_all(void) {
     free_games();
     Uint32 t0 = SDL_GetTicks();
@@ -238,6 +425,10 @@ static void scan_all(void) {
     struct { dev_t dev; ino_t ino; } seen[256];
     int nseen = 0;
     for (int s = 0; s < NUM_SYSTEMS; s++) {
+        if (is_ports(s)) {
+            scan_ports(s);
+            continue;
+        }
         for (int r = 0; r < 3; r++)
             for (int f = 0; f < 16 && SYSTEMS[s].folders[f]; f++) {
                 char dir[512];
@@ -255,6 +446,14 @@ static void scan_all(void) {
                 }
                 scan_dir(s, dir, SYSTEMS[s].folders[f], 0);
             }
+    }
+    for (int k = 0; k < nrfolders; k++) {
+        struct stat st;
+        if (stat(rfolders[k].path, &st) != 0 || !S_ISDIR(st.st_mode)) continue; /* e.g. SD card out */
+        if (rfolders[k].sys >= 0)
+            scan_dir(rfolders[k].sys, rfolders[k].path, SYSTEMS[rfolders[k].sys].folders[0], 0);
+        else
+            scan_auto(rfolders[k].path, 0);
     }
     fprintf(stderr, "scan took %u ms\n", SDL_GetTicks() - t0);
     for (int s = 0; s < NUM_SYSTEMS; s++) {
@@ -282,6 +481,7 @@ static void scan_all(void) {
         }
         sys_count[s] = w;
     }
+    rfolders_count();
     fprintf(stderr, "scan: %d games\n", ngames);
 }
 
@@ -289,6 +489,36 @@ static int game_by_path(const char *p) {
     for (int i = 0; i < ngames; i++)
         if (!strcmp(games[i].path, p)) return i;
     return -1;
+}
+
+/* rom_folders.txt: one "<system id or auto>|<folder>" per line */
+static void rfolders_load(void) {
+    FILE *f = fopen(ROM_FOLDERS_FILE, "r");
+    char line[1200];
+    while (f && fgets(line, sizeof line, f) && nrfolders < MAX_ROM_FOLDERS) {
+        line[strcspn(line, "\r\n")] = 0;
+        char *bar = strchr(line, '|');
+        if (!bar || bar[1] != '/') continue;
+        *bar = 0;
+        int sys = -1;
+        for (int s = 0; s < NUM_SYSTEMS; s++)
+            if (!strcmp(SYSTEMS[s].id, line) && !is_ports(s)) sys = s;
+        rfolders[nrfolders].path = strdup(bar + 1);
+        rfolders[nrfolders].sys = sys;
+        rfolders[nrfolders].count = 0;
+        nrfolders++;
+    }
+    if (f) fclose(f);
+}
+
+static void rfolders_save(void) {
+    FILE *f = fopen(ROM_FOLDERS_FILE ".tmp", "w");
+    if (!f) return;
+    for (int k = 0; k < nrfolders; k++)
+        fprintf(f, "%s|%s\n", rfolders[k].sys >= 0 ? SYSTEMS[rfolders[k].sys].id : "auto", rfolders[k].path);
+    fclose(f);
+    rename(ROM_FOLDERS_FILE ".tmp", ROM_FOLDERS_FILE);
+    sync();
 }
 
 static void lists_load(void) {
@@ -542,7 +772,7 @@ static void home_draw(float t) {
         if (x > SCREEN_W || x + cw < 0) continue;
         int grow = f ? 14 : 0;
         char sub[48];
-        snprintf(sub, sizeof sub, "%d game%s", sys_count[i], sys_count[i] == 1 ? "" : "s");
+        snprintf(sub, sizeof sub, "%d %s%s", sys_count[i], is_ports(i) ? "port" : "game", sys_count[i] == 1 ? "" : "s");
         draw_card((int)x - grow / 2, cy - grow / 2, cw + grow, ch + grow, 186 + grow,
                   sys_art[i], SYSTEMS[i].name, sub, f, 0.75f + 0.25f * sinf(t * 3));
     }
@@ -690,7 +920,8 @@ static void library_draw(void) {
     const SystemDef *s = &SYSTEMS[lib_sys];
     gfx_text(F_HUGE, s->name, 28, 18, C_TEXT, 255);
     char sub[64];
-    snprintf(sub, sizeof sub, "%d game%s", sys_count[lib_sys], sys_count[lib_sys] == 1 ? "" : "s");
+    snprintf(sub, sizeof sub, "%d %s%s", sys_count[lib_sys], is_ports(lib_sys) ? "port" : "game",
+             sys_count[lib_sys] == 1 ? "" : "s");
     gfx_text(F_BODY, sub, 28, 76, C_MUTED, 255);
     int bx = SCREEN_W - 28;
     const char *labels[] = {"B Back", lib_list ? "X Grid" : "X List", "Y Favorite"};
@@ -701,9 +932,16 @@ static void library_draw(void) {
         bx -= 12;
     }
     char all[64];
-    snprintf(all, sizeof all, "All %s Games", s->name);
+    snprintf(all, sizeof all, is_ports(lib_sys) ? "All %s" : "All %s Games", s->name);
     gfx_text(F_LABEL, all, 28, 112, C_NEON_BLUE, 255);
-    if (!sys_count[lib_sys]) {
+    if (!sys_count[lib_sys] && is_ports(lib_sys)) {
+        empty_panel("No ports yet",
+                    file_exists(PORTMASTER_ENV)
+                        ? "Press START to open PortMaster and download free games and ports. They are "
+                          "installed on internal storage."
+                        : "PortMaster isn't installed. Run Apps → Install RaineyUI again to add it.",
+                    170);
+    } else if (!sys_count[lib_sys]) {
         char body[400];
         snprintf(body, sizeof body,
                  "Copy %s games into %s/%s on internal storage (or Roms/%s on an SD card), "
@@ -715,7 +953,24 @@ static void library_draw(void) {
     }
     static const char *h[] = {"A", "Details", "B", "Back", "X", "Grid/List", "Y", "Favorite",
                               "SELECT", "Rescan", "L/R", "Page"};
-    ui_hints(h, 6);
+    static const char *hp[] = {"A", "Details", "B", "Back", "X", "Grid/List", "Y", "Favorite",
+                               "START", "PortMaster"};
+    if (is_ports(lib_sys)) ui_hints(hp, 5);
+    else ui_hints(h, 6);
+}
+
+/* open the PortMaster app (launch.sh runs it, then comes back to RaineyUI) */
+static void open_portmaster(void) {
+    if (!file_exists(PORTMASTER_ENV)) {
+        ui_toast("PortMaster isn't installed: run Apps → Install RaineyUI again");
+        return;
+    }
+    FILE *f = fopen(LAUNCH_FILE, "w");
+    if (!f) return;
+    fprintf(f, "ports\n%s\n\nPortMaster\nportmaster\n", PORTMASTER_ENV);
+    fclose(f);
+    ui_save_state();
+    want_exit = true;
 }
 
 static void set_nav(InputState *in, int *focus, int n, int cols) {
@@ -748,6 +1003,10 @@ static void library_input(InputState *in) {
         return;
     }
     if (in->pressed[B_X]) lib_list = !lib_list;
+    if (in->pressed[B_START] && is_ports(lib_sys)) {
+        open_portmaster();
+        return;
+    }
     if (in->pressed[B_SELECT]) {
         rescan();
         n = sys_count[lib_sys];
@@ -829,6 +1088,7 @@ static void detail_draw(void) {
              !strcmp(ln, "retroarch") ? "In game: MENU = TrimUI menu (save/load/exit), MENU+START quits."
              : !strcmp(ln, "drastic") ? "In game: MENU opens the DraStic menu (Exit to return)."
              : !strcmp(ln, "ppsspp")  ? "In game: MENU opens the PPSSPP menu (Exit to return)."
+             : !strcmp(ln, "port")    ? "In game: SELECT+START quits the port."
                                       : "In game: MENU or SELECT+START opens Rainey Options.");
     gfx_text(F_SMALL, buf, x, y + 8, C_MUTED, 255);
     static const char *h[] = {"A", "Select", "B", "Back", "Y", "Favorite", "←→", "Move"};
@@ -862,6 +1122,7 @@ static bool ui_load_state(void) {
     coll_focus = cf;
     screen = (Screen)sc;
     if (screen == S_SPLASH) screen = S_HOME;
+    if (screen == S_BROWSE) screen = S_FOLDERS;
     if (lib_focus >= sys_count[lib_sys]) lib_focus = 0;
     detail_game = path[0] ? game_by_path(path) : -1;
     if (screen == S_DETAIL && detail_game < 0) screen = S_HOME;
@@ -878,7 +1139,8 @@ static void launch(int gi) {
     }
     const SystemDef *s = &SYSTEMS[g->sys];
     char core[700];
-    snprintf(core, sizeof core, "%s/%s", g_appdir, s->core);
+    if (is_ports(g->sys)) snprintf(core, sizeof core, "%s", PORTMASTER_ENV);
+    else snprintf(core, sizeof core, "%s/%s", g_appdir, s->core);
     if (!file_exists(core)) {
         snprintf(toast, sizeof toast, "Emulator missing: %s", s->core_label);
         toast_until = SDL_GetTicks() + 2500;
@@ -963,7 +1225,269 @@ static void collections_input(InputState *in) {
     }
 }
 
-enum { SET_BG, SET_BG_DIM, SET_SCANLINES, SET_GAME_SCANLINES, SET_LAYOUT, SET_SCALE, SET_SMOOTH, SET_DC_RES, SET_LEDS, SET_WIFI, SET_RESCAN, SET_EXIT, SET_N };
+/* ---------------- ROM folders + folder browser ---------------- */
+
+static int fold_focus;  /* 0 = "Add a folder", 1.. = rfolders[focus-1] */
+static float fold_scroll;
+static char br_path[1024]; /* "" = choose SD card / internal storage */
+static char **br_items;
+static int br_n, br_focus, br_files;
+static float br_scroll;
+
+static int cmp_str(const void *a, const void *b) {
+    return strcasecmp(*(char *const *)a, *(char *const *)b);
+}
+
+static bool any_ext_ok(const char *name) {
+    for (int s = 0; s < NUM_SYSTEMS; s++)
+        if (!is_ports(s) && ext_ok(&SYSTEMS[s], name)) return true;
+    return false;
+}
+
+/* list the sub-folders of path ("" = the storage list); only reads the folder */
+static void br_open(const char *path) {
+    for (int i = 0; i < br_n; i++) free(br_items[i]);
+    br_n = br_files = 0;
+    br_focus = 0;
+    br_scroll = 0;
+    snprintf(br_path, sizeof br_path, "%s", path);
+    int cap = 64;
+    br_items = realloc(br_items, sizeof(char *) * cap);
+    if (!*path) {
+        struct stat a, b;
+        /* the SD card is only offered when it is mounted (a different device than /mnt) */
+        if (stat(SDCARD_ROOT, &a) == 0 && stat("/mnt", &b) == 0 && a.st_dev != b.st_dev)
+            br_items[br_n++] = strdup("SD card");
+        br_items[br_n++] = strdup("Internal storage");
+        return;
+    }
+    DIR *d = opendir(path);
+    struct dirent *e;
+    char full[1400];
+    while (d && (e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(full, sizeof full, "%s/%s", path, e->d_name);
+        if (!is_dir_entry(e, full)) {
+            if (any_ext_ok(e->d_name)) br_files++;
+            continue;
+        }
+        if (!strcmp(e->d_name, "System Volume Information") || !strcmp(e->d_name, "lost+found")) continue;
+        if (br_n == cap) br_items = realloc(br_items, sizeof(char *) * (cap *= 2));
+        br_items[br_n++] = strdup(e->d_name);
+    }
+    if (d) closedir(d);
+    qsort(br_items, br_n, sizeof(char *), cmp_str);
+}
+
+static const char *pretty_path(const char *p, char *out, size_t n) {
+    if (!strncmp(p, SDCARD_ROOT, strlen(SDCARD_ROOT)))
+        snprintf(out, n, "SD card%s", p + strlen(SDCARD_ROOT));
+    else if (!strncmp(p, "/mnt/UDISK", 10))
+        snprintf(out, n, "Internal%s", p + 10);
+    else
+        snprintf(out, n, "%s", p);
+    return out;
+}
+
+static void list_rows(int n, int focus, float *scroll, int top, int bottom) {
+    const int rh = 64;
+    int view = bottom - top;
+    float target = focus * rh - view / 2 + rh / 2, maxs = n * rh - view;
+    if (target > maxs) target = maxs;
+    if (target < 0) target = 0;
+    *scroll += (target - *scroll) * 0.3f;
+}
+
+static void row_box(int y, int h, bool f) {
+    if (f) gfx_glow(28, y, SCREEN_W - 56, h, 6, C_NEON_BLUE, 0.8f);
+    gfx_round_fill(28, y, SCREEN_W - 56, h, 6, f ? 0x0B2A3A : C_PANEL, f ? 240 : 190);
+    gfx_round_ring(28, y, SCREEN_W - 56, h, 6, f ? 2 : 1, f ? C_NEON_BLUE : C_NEON_PURPLE, f ? 255 : 90);
+}
+
+static void folders_draw(void) {
+    gfx_text(F_HUGE, "ROM folders", 28, 18, C_TEXT, 255);
+    gfx_text(F_BODY, "Add game folders from the SD card or internal storage. They are only read.", 28, 76,
+             C_MUTED, 255);
+    gfx_neon_button(SCREEN_W - 28 - 120, 24, 120, 56, "B Back", false);
+    int top = 124, bottom = SCREEN_H - 150, n = nrfolders + 1;
+    list_rows(n, fold_focus, &fold_scroll, top, bottom);
+    SDL_Rect clip = {0, top - 8, SCREEN_W, bottom - top + 8};
+    SDL_RenderSetClipRect(g_ren, &clip);
+    for (int i = 0; i < n; i++) {
+        int y = top + i * 64 - (int)fold_scroll;
+        if (y + 64 < top - 8 || y > bottom) continue;
+        bool f = i == fold_focus;
+        row_box(y, 56, f);
+        if (i == 0) {
+            gfx_text(F_LABEL, "+  Add a folder", 48, y + 12, f ? C_NEON_BLUE : C_TEXT, 255);
+            continue;
+        }
+        RomFolder *rf = &rfolders[i - 1];
+        char pp[600], v[96], cnt[48];
+        pretty_path(rf->path, pp, sizeof pp);
+        snprintf(v, sizeof v, f ? "‹ %s ›" : "%s", rf->sys >= 0 ? SYSTEMS[rf->sys].name : "Auto");
+        bool here = file_exists(rf->path);
+        if (here) snprintf(cnt, sizeof cnt, "%d game%s", rf->count, rf->count == 1 ? "" : "s");
+        else snprintf(cnt, sizeof cnt, "not found");
+        int vw = gfx_text_w(F_LABEL, v), cw = gfx_text_w(F_SMALL, cnt);
+        gfx_text(F_LABEL, v, SCREEN_W - 48 - vw, y + 12, f ? C_NEON_BLUE : C_TEXT, 255);
+        gfx_text(F_SMALL, cnt, SCREEN_W - 48 - vw - 20 - cw, y + 17, here ? C_MUTED : C_NEON_PINK, 255);
+        gfx_text_ellipsis(F_BODY, pp, 48, y + 14, SCREEN_W - 48 - vw - 40 - cw - 48, C_TEXT, 255);
+    }
+    SDL_RenderSetClipRect(g_ren, NULL);
+    gfx_text_wrap(F_SMALL,
+                  "Auto finds each game's system from its file, and from folder names like snes, psx or "
+                  "Dreamcast. Arcade games need a folder named arcade, mame, fbneo or neogeo, or set the "
+                  "system yourself with ← →. Roms/ folders and SD card folders named after a system are "
+                  "always read.",
+                  28, bottom + 16, SCREEN_W - 56, 3, 26, C_MUTED, 255);
+    static const char *h1[] = {"A", "Add", "B", "Back"};
+    static const char *h2[] = {"←→", "System", "X", "Remove", "B", "Back"};
+    if (fold_focus == 0) ui_hints(h1, 2);
+    else ui_hints(h2, 3);
+}
+
+static void folders_input(InputState *in) {
+    int n = nrfolders + 1;
+    if (in->pressed[B_B]) {
+        screen = S_SETTINGS;
+        return;
+    }
+    if (in->pressed[B_DOWN] && fold_focus < n - 1) fold_focus++;
+    if (in->pressed[B_UP] && fold_focus > 0) fold_focus--;
+    if (fold_focus == 0) {
+        if (in->pressed[B_A]) {
+            br_open("");
+            screen = S_BROWSE;
+        }
+        return;
+    }
+    RomFolder *rf = &rfolders[fold_focus - 1];
+    int d = in->pressed[B_RIGHT] || in->pressed[B_A] ? 1 : in->pressed[B_LEFT] ? -1 : 0;
+    if (d) {
+        /* Auto (-1), then every system except Ports (those only come from PortMaster) */
+        int total = NUM_SYSTEMS + 1;
+        do rf->sys = (rf->sys + 1 + d + total) % total - 1;
+        while (rf->sys >= 0 && is_ports(rf->sys));
+        rfolders_save();
+        rescan();
+    }
+    if (in->pressed[B_X]) {
+        free(rf->path);
+        memmove(rf, rf + 1, sizeof *rf * (nrfolders - fold_focus));
+        nrfolders--;
+        if (fold_focus > nrfolders) fold_focus = nrfolders;
+        rfolders_save();
+        rescan();
+        ui_toast("Folder removed (its files were not touched)");
+    }
+}
+
+static void browse_use_folder(void) {
+    for (int k = 0; k < nrfolders; k++)
+        if (!strcmp(rfolders[k].path, br_path)) {
+            fold_focus = k + 1;
+            screen = S_FOLDERS;
+            ui_toast("That folder is already added");
+            return;
+        }
+    if (nrfolders == MAX_ROM_FOLDERS) {
+        ui_toast("You can add up to 32 folders");
+        return;
+    }
+    RomFolder *rf = &rfolders[nrfolders++];
+    rf->path = strdup(br_path);
+    rf->sys = -1;
+    rf->count = 0;
+    rfolders_save();
+    scan_all();
+    fold_focus = nrfolders;
+    screen = S_FOLDERS;
+    char m[160];
+    snprintf(m, sizeof m, "Added: found %d game%s", rf->count, rf->count == 1 ? "" : "s");
+    ui_toast(m);
+}
+
+static void browse_draw(void) {
+    gfx_text(F_HUGE, "Choose a folder", 28, 18, C_TEXT, 255);
+    char pp[700], line[800];
+    if (!br_path[0]) snprintf(line, sizeof line, "Where are your games?");
+    else snprintf(line, sizeof line, "%s", pretty_path(br_path, pp, sizeof pp));
+    gfx_text_ellipsis(F_BODY, line, 28, 76, SCREEN_W - 56, C_NEON_BLUE, 255);
+    int top = 124, bottom = SCREEN_H - 110;
+    if (br_path[0]) {
+        char info[160];
+        snprintf(info, sizeof info, "%d game file%s in this folder · %d folder%s", br_files,
+                 br_files == 1 ? "" : "s", br_n, br_n == 1 ? "" : "s");
+        gfx_text(F_SMALL, info, 28, bottom + 16, C_MUTED, 255);
+    }
+    if (!br_n) {
+        empty_panel("No folders here", "Press X to use this folder, or B to go back.", top);
+    } else {
+        list_rows(br_n, br_focus, &br_scroll, top, bottom);
+        SDL_Rect clip = {0, top - 8, SCREEN_W, bottom - top + 8};
+        SDL_RenderSetClipRect(g_ren, &clip);
+        for (int i = 0; i < br_n; i++) {
+            int y = top + i * 64 - (int)br_scroll;
+            if (y + 64 < top - 8 || y > bottom) continue;
+            bool f = i == br_focus;
+            row_box(y, 56, f);
+            gfx_round_fill(46, y + 16, 30, 24, 4, f ? C_NEON_BLUE : C_NEON_PURPLE, 200);
+            gfx_round_fill(46, y + 12, 14, 8, 3, f ? C_NEON_BLUE : C_NEON_PURPLE, 200);
+            gfx_text_ellipsis(F_LABEL, br_items[i], 92, y + 12, SCREEN_W - 180, C_TEXT, 255);
+            gfx_text(F_BODY, "›", SCREEN_W - 64, y + 12, C_MUTED, 255);
+        }
+        SDL_RenderSetClipRect(g_ren, NULL);
+    }
+    static const char *h1[] = {"A", "Open", "B", "Back"};
+    static const char *h2[] = {"A", "Open", "X", "Use this folder", "B", "Up"};
+    if (br_path[0]) ui_hints(h2, 3);
+    else ui_hints(h1, 2);
+}
+
+static void browse_input(InputState *in) {
+    if (in->pressed[B_DOWN] && br_focus < br_n - 1) br_focus++;
+    if (in->pressed[B_UP] && br_focus > 0) br_focus--;
+    if (in->pressed[B_R]) br_focus = br_focus + 8 < br_n ? br_focus + 8 : (br_n ? br_n - 1 : 0);
+    if (in->pressed[B_L]) br_focus = br_focus > 8 ? br_focus - 8 : 0;
+    if (in->pressed[B_B]) {
+        char up[1024];
+        snprintf(up, sizeof up, "%s", br_path);
+        char *sl = strrchr(up, '/');
+        if (!br_path[0]) {
+            screen = S_FOLDERS;
+            return;
+        }
+        if (!strcmp(br_path, SDCARD_ROOT) || !strcmp(br_path, "/mnt/UDISK") || !sl) {
+            up[0] = 0;
+        } else {
+            *sl = 0;
+        }
+        /* come back with the folder we left focused */
+        char left[256];
+        snprintf(left, sizeof left, "%s", sl && up[0] ? sl + 1 : "");
+        bool from_root = !up[0];
+        const char *was = !strcmp(br_path, SDCARD_ROOT) ? "SD card" : "Internal storage";
+        br_open(up);
+        for (int i = 0; i < br_n; i++)
+            if (!strcmp(br_items[i], from_root ? was : left)) br_focus = i;
+        return;
+    }
+    if (in->pressed[B_X] && br_path[0]) {
+        browse_use_folder();
+        return;
+    }
+    if (in->pressed[B_A] && br_n) {
+        char next[1024];
+        if (!br_path[0])
+            snprintf(next, sizeof next, "%s", !strcmp(br_items[br_focus], "SD card") ? SDCARD_ROOT : "/mnt/UDISK");
+        else
+            snprintf(next, sizeof next, "%s/%s", br_path, br_items[br_focus]);
+        br_open(next);
+    }
+}
+
+enum { SET_BG, SET_BG_DIM, SET_SCANLINES, SET_GAME_SCANLINES, SET_LAYOUT, SET_SCALE, SET_SMOOTH, SET_DC_RES, SET_LEDS, SET_FOLDERS, SET_WIFI, SET_RESCAN, SET_EXIT, SET_N };
 static const char *scale_names[] = {"Auto", "1x", "2x", "3x", "4x", "Stretch"};
 /* keep in sync with launch.sh */
 static const char *dc_res_names[] = {"640x480", "800x600", "960x720", "1024x768", "1280x960"};
@@ -978,7 +1502,7 @@ static void settings_draw(void) {
     {
         int yy = 0, fy = 0;
         for (int i = 0; i < SET_N; i++) {
-            if (i == SET_WIFI) yy += 40;
+            if (i == SET_FOLDERS) yy += 40;
             if (i == set_focus) fy = yy;
             yy += 54 + (i == SET_BG && set_focus == SET_BG ? 22 : 0);
         }
@@ -991,12 +1515,12 @@ static void settings_draw(void) {
     int y = 118 - (int)set_scroll;
     const char *labels[SET_N] = {"Background", "Background brightness",
                                  "Scanlines (menus)", "Scanlines (in game)", "Button layout",
-                                 "Video scale", "Smooth video", "Dreamcast resolution", "LED lights", "Wi-Fi transfer", "Rescan games",
+                                 "Video scale", "Smooth video", "Dreamcast resolution", "LED lights", "ROM folders", "Wi-Fi transfer", "Rescan games",
                                  "Exit RaineyUI"};
     for (int i = 0; i < SET_N; i++) {
         bool f = set_focus == i;
         int h = 50;
-        if (i == SET_WIFI) {
+        if (i == SET_FOLDERS) {
             y += 4;
             gfx_text(F_LABEL, "Library", 28, y, C_NEON_BLUE, 255);
             y += 36;
@@ -1087,6 +1611,13 @@ static void settings_draw(void) {
             gfx_text(F_BODY, "›", rx - 20, y + 10, C_MUTED, 255);
             break;
         }
+        case SET_FOLDERS: {
+            char v[64];
+            if (nrfolders) snprintf(v, sizeof v, "%d added  ›", nrfolders);
+            else snprintf(v, sizeof v, "Add folders to scan  ›");
+            gfx_text(F_BODY, v, rx - gfx_text_w(F_BODY, v), y + 10, C_MUTED, 255);
+            break;
+        }
         case SET_WIFI:
             gfx_text(F_BODY, "Upload from a browser  ›", rx - gfx_text_w(F_BODY, "Upload from a browser  ›"),
                      y + 10, C_MUTED, 255);
@@ -1145,6 +1676,13 @@ static void settings_input(InputState *in) {
             screen = S_LEDS;
         }
         break;
+    case SET_FOLDERS:
+        changed = false;
+        if (in->pressed[B_A] || in->pressed[B_RIGHT]) {
+            fold_focus = 0;
+            screen = S_FOLDERS;
+        }
+        break;
     case SET_WIFI:
         changed = false;
         if (in->pressed[B_A] || in->pressed[B_RIGHT]) {
@@ -1173,7 +1711,7 @@ int ui_main(SDL_Window *win, SDL_Renderer *ren) {
     for (int s = 0; s < NUM_SYSTEMS; s++) {
         char d[300];
         snprintf(d, sizeof d, "%s/%s", ROMS_INTERNAL, SYSTEMS[s].folders[0]);
-        mkdirs(d);
+        if (!is_ports(s)) mkdirs(d);
         char rel[128];
         snprintf(rel, sizeof rel, "res/%s", SYSTEMS[s].image);
         sys_art[s] = gfx_load(rel);
@@ -1187,6 +1725,7 @@ int ui_main(SDL_Window *win, SDL_Renderer *ren) {
     bg_scan();
     bg_select_name(g_settings.background[0] ? g_settings.background : "Rainey");
     lists_load();
+    rfolders_load();
     scan_all();
     detail_game = 0;
     bool restored = ui_load_state();
@@ -1228,6 +1767,8 @@ int ui_main(SDL_Window *win, SDL_Renderer *ren) {
             case S_DETAIL: detail_input(&in); break;
             case S_COLLECTIONS: collections_input(&in); break;
             case S_SETTINGS: settings_input(&in); break;
+            case S_FOLDERS: folders_input(&in); break;
+            case S_BROWSE: browse_input(&in); break;
             case S_LEDS:
                 if (leds_screen_input(&in)) screen = S_SETTINGS;
                 break;
@@ -1245,6 +1786,8 @@ int ui_main(SDL_Window *win, SDL_Renderer *ren) {
             case S_DETAIL: detail_draw(); break;
             case S_COLLECTIONS: collections_draw(); break;
             case S_SETTINGS: settings_draw(); break;
+            case S_FOLDERS: folders_draw(); break;
+            case S_BROWSE: browse_draw(); break;
             case S_LEDS: leds_screen_draw(); break;
             case S_WIFI: wifi_screen_draw(); break;
             default: break;

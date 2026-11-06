@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+## Modular - TRIMUI (RaineyUI version)
+#
+# PortMaster's mod_TrimUI.txt, which every port sources, puts HOME on the SD card
+# (/mnt/SDCARD/Data/home) and ports bind-mount their save folders under it. RaineyUI never
+# writes to the SD card, so HOME is on internal storage instead. env.sh copies this file over
+# PortMaster's before PortMaster or a port starts.
+
+# Set virtual screen
+CUR_TTY="/dev/fd/1"
+
+# Use for Godot 2
+GODOT2_OPTS="-r ${DISPLAY_WIDTH}x${DISPLAY_HEIGHT} -f"
+
+# Use for Godot 3+
+GODOT_OPTS="--resolution ${DISPLAY_WIDTH}x${DISPLAY_HEIGHT} -f"
+
+# Fix squashfs runtime mounts
+export HOME="/mnt/UDISK/ports/.home"
+[ -d "$HOME" ] || mkdir -p "$HOME"
+
+pm_platform_helper() {
+    if [ -e "$PM_PIPE" ]; then
+        PortMasterDialogExit
+    fi
+
+    # DO SOMETHING HERE
+    printf ""
+}

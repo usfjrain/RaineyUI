@@ -35,6 +35,8 @@ const SystemDef SYSTEMS[] = {
      "nintendo_ds.png", false, "drastic", "DraStic"},
     {"psp", "PSP", {"PSP", "psp", NULL}, ",iso,cso,pbp,", "emus/ppsspp/PPSSPPSDL_gl", "psp.png", false,
      "ppsspp", "PPSSPP"},
+    /* PortMaster ports: bash scripts in PORTS_DIR on internal storage (never read from the SD card) */
+    {"ports", "Ports", {"PORTS", NULL}, ",sh,", "", "ports.png", false, "port", "PortMaster"},
 };
 const int NUM_SYSTEMS = sizeof SYSTEMS / sizeof SYSTEMS[0];
 

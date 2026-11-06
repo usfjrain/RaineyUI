@@ -17,6 +17,8 @@ Settings, and the in-game *Rainey Options* menu) with a built-in libretro player
 | Box art (optional) | `<rom folder>/Imgs/<game>.png` or `/mnt/UDISK/Imgs/<FOLDER>/<game>.png` |
 | Core option overrides | `/mnt/UDISK/RaineyUI/options/<core>.opt` (`key = "value"`) |
 | Log | `/mnt/UDISK/RaineyUI/rainey.log` |
+| Extra ROM folders | `/mnt/UDISK/RaineyUI/rom_folders.txt` (written by *Settings → ROM folders*) |
+| PortMaster | `/mnt/UDISK/Apps/PortMaster/` (also in MainUI → Apps); ports in `/mnt/UDISK/ports/` |
 
 Copy ROMs with `adb push game.zip /mnt/UDISK/Roms/SFC/`, then *Settings → Rescan games* (or SELECT in a library).
 
@@ -68,6 +70,55 @@ RaineyUI only **reads** from it:
   because emulators write VMU/flash data next to their BIOS
 - a game that exists both internally and on the card is listed once (the complete / internal copy)
 - `.gdi`/`.cue` discs whose track files are missing are marked "incomplete" and won't launch
+
+## ROM folders (Settings → ROM folders)
+
+*Add a folder* opens a folder browser (SD card or internal storage); X picks the folder you are
+in. The folder is only read, nothing on it is moved or changed. With **Auto** (the default):
+
+- a folder named after a system (`snes`, `SFC`, `psx`, `Dreamcast`, …) is read as that system
+- other game files get their system from the file type; `.iso`, `.pbp` and `.chd` are opened to
+  tell PSP from PS1 and Dreamcast from PS1, and `.zip` files are looked inside
+- folders named after systems RaineyUI can't play (`saturn`, `ps2`, `3do`, `amiga`, …) are skipped,
+  and `.zip` files with no recognisable game inside (arcade sets) are only read from arcade-named
+  folders (`arcade`, `mame`, `fbneo`, `neogeo`, `cps1-3`)
+
+← → on a folder sets its system instead (every supported file type of that system, two folder
+levels deep). X removes it from the list. Up to 32 folders; a folder on a card that isn't
+inserted is shown as "not found".
+
+## Ports (PortMaster)
+
+The SD installer also installs [PortMaster](https://portmaster.games) to
+`/mnt/UDISK/Apps/PortMaster`. Open it from the **Ports** system (START) or from MainUI → Apps,
+download ports, and they appear under Ports in RaineyUI with their pictures.
+
+PortMaster's own TrimUI setup writes to the SD card (`Roms/PORTS`, `Imgs/PORTS`, `Data/ports`),
+so RaineyUI runs it differently, keeping everything on internal storage:
+
+- `portmaster/launch.sh` + `runtime/env.sh`: paths (`HM_TOOLS_DIR`, `HM_PORTS_DIR=/mnt/UDISK/ports`),
+  `runtime/control.txt` (RaineyUI's version of PortMaster's TrimUI `control.txt`: `directory=mnt/UDISK`)
+- `runtime/mod_TrimUI.txt`: replaces PortMaster's file of the same name, which every port runs
+  and which puts `HOME` (where ports mount their save folders) on the SD card; RaineyUI's puts it
+  in `/mnt/UDISK/ports/.home`
+- `runtime/site/sitecustomize.py`: swaps PortMaster's TrimUI platform for one that never touches
+  the SD card, and restores the two files above when PortMaster updates itself (`env.sh` also
+  restores them before every launch)
+- `runtime/bin/`: `pkill`/`pgrep` (missing from the firmware's BusyBox; ports use them to stop
+  `gptokeyb` on exit) and `retroarch`, which runs RaineyUI's RetroArch for ports that ship a
+  libretro core; it is linked to `/usr/bin/retroarch` when the firmware has none
+- the stock firmware has no Python or bash, so the installer downloads a standalone Python 3.11
+  ([python-build-standalone](https://github.com/astral-sh/python-build-standalone), glibc 2.17)
+  for PortMaster's menu and a static bash ([bash-static](https://github.com/robxu9/bash-static))
+  for the ports; `/bin/bash` is linked to it the first time PortMaster or a port runs
+- ports are started by `launch.sh` (`bash <port>.sh` with `env.sh`); ports found on an SD card are
+  not listed, because they would save to the card
+- in a port, SELECT+START quits back to RaineyUI (PortMaster's `gptokeyb` hotkey)
+
+Tested on a Brick (firmware 1.1.1): PortMaster's menu, installing ports, OpenTyrian (native
+SDL2) and 2048 (libretro core) started from RaineyUI, and nothing written to the SD card.
+
+Developer install over ADB: `tools/install_portmaster.sh`.
 
 ## Moving files from your computer
 

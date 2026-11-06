@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+# RaineyUI version of PortMaster's TrimUI control.txt. PortMaster and the ports live on
+# internal storage (/mnt/UDISK), so nothing is ever written to the SD card.
+
+CUR_TTY=/dev/tty0
+
+export controlfolder="/mnt/UDISK/Apps/PortMaster/PortMaster"
+export directory="mnt/UDISK"
+
+PM_SCRIPTNAME="$(basename "${PM_SCRIPTNAME:-$0}")"
+PM_PORTNAME="${PM_SCRIPTNAME%.sh}"
+
+if [ -z "$PM_PORTNAME" ]; then
+  PM_PORTNAME="Port"
+fi
+
+export ESUDO=""
+export ESUDOKILL="-1"
+export SDL_GAMECONTROLLERCONFIG_FILE="/usr/trimui/gamecontrollerdb.txt"
+
+get_controls() {
+  :
+}
+
+source $controlfolder/device_info.txt
+source $controlfolder/funcs.txt
+
+export GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.aarch64.so $controlfolder/gptokeyb2 $ESUDOKILL"
+export GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

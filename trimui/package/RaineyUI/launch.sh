@@ -86,6 +86,17 @@ while true; do
         HOME="$PWD" "$CORE" "$ROM" > /dev/null 2>&1
         cd "$progdir"
         ;;
+    port)
+        # PortMaster port (bash script in /mnt/UDISK/ports); env.sh sets PortMaster's paths
+        (
+            . "$CORE"
+            cd "${ROM%/*}"
+            bash "$ROM"
+        ) >> "$LOG" 2>&1
+        ;;
+    portmaster)
+        /bin/sh "${CORE%/runtime/env.sh}/launch.sh" >> "$LOG" 2>&1
+        ;;
     *)
         ./rainey --play /tmp/rainey_launch >> "$LOG" 2>&1
         ;;

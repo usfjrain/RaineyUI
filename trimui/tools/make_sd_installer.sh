@@ -28,6 +28,23 @@ cp -R "$P/rainey" "$P/launch.sh" "$P/config.json" "$P/icon.png" "$P/leds_watch.s
       "$INST/payload/RaineyUI/"
 curl -fsSL -o "$INST/cacert.pem" https://curl.se/ca/cacert.pem   # Mozilla CA list (MPL-2.0), for HTTPS on the Brick
 
+# PortMaster: RaineyUI's launcher/settings go in the payload; PortMaster, Python and bash are
+# downloaded by the Brick from their releases (pinned here, checked by SHA-256)
+cp -R "$HERE/portmaster" "$INST/payload/PortMaster"
+PM_URL=https://github.com/PortsMaster/PortMaster-GUI/releases/download/2026.11.02-0433/trimui.portmaster.zip
+PY_URL=https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.11.18%2B20261026-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz
+BASH_URL=https://github.com/robxu9/bash-static/releases/download/5.2.015-1.2.3-2/bash-linux-aarch64
+PM_CACHE="$HERE/../.local/pm/dl"
+mkdir -p "$PM_CACHE"
+pm_line() { # kind url
+    local f="$PM_CACHE/$(basename "${2//%2B/+}")"
+    [ -s "$f" ] || curl -fsSL -o "$f" "$2"
+    echo "$1|$(shasum -a 256 "$f" | cut -d' ' -f1)|$2"
+}
+PM_LINES="$(pm_line pm "$PM_URL")
+$(pm_line python "$PY_URL")
+$(pm_line bash "$BASH_URL")"
+
 CROSSMIX_SHA=$(sed -n 's/^CROSSMIX_SHA=//p' "$HERE/tools/install_emulators.sh")
 python3 -I - "$STAGE/RaineyUI" "$INST" "$CROSSMIX_SHA" <<'EOF'
 import hashlib, os, shutil, sys, urllib.parse
@@ -67,6 +84,7 @@ with open(os.path.join(inst, "manifest.txt"), "w") as m:
     m.write(f"check|{smallest[1]}\n" + "\n".join(lines) + "\n")
 print(f"manifest: {sum(l.startswith('core') for l in lines)} cores, {sum(l.startswith('file') for l in lines)} files")
 EOF
+echo "$PM_LINES" >> "$INST/manifest.txt"
 cat > "$WORK/zip/README.txt" <<EOF
 RaineyUI ${VER} installer for TrimUI Brick / Smart Pro (stock firmware)
 
@@ -75,7 +93,8 @@ RaineyUI ${VER} installer for TrimUI Brick / Smart Pro (stock firmware)
 2. Put the SD card in the Brick, connect it to Wi-Fi, and open Apps -> Install RaineyUI.
 3. Press A. When it says "RaineyUI is installed!", open Apps -> RaineyUI.
 
-The installer downloads the emulators from their original projects, so Wi-Fi is needed.
+The installer downloads the emulators and PortMaster from their original projects, so
+Wi-Fi is needed. Everything is installed on the Brick's internal storage.
 Run it again any time to update RaineyUI. Your games, saves and SD card are not changed.
 https://github.com/usfjrain/RaineyUI
 EOF

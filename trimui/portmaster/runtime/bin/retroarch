@@ -1,0 +1,7 @@
+#!/bin/sh
+# `retroarch` for ports that ship a libretro core (they run /usr/bin/retroarch, which the stock
+# firmware doesn't have): RaineyUI's RetroArch with its TrimUI config.
+RA=/mnt/UDISK/Apps/RaineyUI/emus/RetroArch
+[ -x "$RA/ra64.trimui" ] || { echo "retroarch: RaineyUI's RetroArch is not installed" >&2; exit 1; }
+cd "$RA" || exit 1
+HOME="$RA" exec ./ra64.trimui -c "$RA/retroarch.cfg" "$@"

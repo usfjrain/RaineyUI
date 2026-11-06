@@ -37,9 +37,12 @@ if ! fetch "$CHECK" /dev/null; then
     fail "No internet connection." "Connect to Wi-Fi in Settings → Network, then run the installer again."
 fi
 
-# 2. space: app + emulators need ~250 MB
+# 2. space: app + emulators need ~250 MB, PortMaster ~110 MB (+ ~60 MB while downloading)
 FREE_MB=$(( $(df -k /mnt/UDISK | awk 'NR==2 {print $4}') / 1024 ))
-[ "$FREE_MB" -ge 300 ] || fail "Not enough internal storage (${FREE_MB} MB free)." "RaineyUI needs about 300 MB. Delete some files and try again."
+NEED_MB=450
+[ -f /mnt/UDISK/Apps/PortMaster/PortMaster/pugwash ] && NEED_MB=300
+[ "$FREE_MB" -ge $NEED_MB ] ||
+    fail "Not enough internal storage (${FREE_MB} MB free)." "RaineyUI needs about $NEED_MB MB. Delete some files and try again."
 
 # 3. the app itself
 status RUN 4 "Copying RaineyUI" "to internal storage"
@@ -78,12 +81,62 @@ while IFS='|' read -r KIND SUM REL URL; do
 done < "$MANIFEST"
 chmod +x "$DEST/emus/RetroArch/ra64.trimui" "$DEST/emus/drastic/"drastic* "$DEST/emus/ppsspp/PPSSPPSDL_gl" 2>/dev/null
 
-# 5. LED lights: re-apply the chosen preset at boot and when the TrimUI menu restarts
-status RUN 93 "Finishing up" "LED lights"
+# 5. PortMaster (ports), on internal storage: RaineyUI's launcher and settings from the payload,
+#    PortMaster itself, a Python 3 for its menu and bash for the ports, each checked by SHA-256.
+#    PortMaster updates itself later, so an installed copy is kept.
+PM=/mnt/UDISK/Apps/PortMaster
+status RUN 92 "Installing PortMaster" ""
+mkdir -p "$PM/runtime/bin" /mnt/UDISK/ports
+cp -r "$HERE/payload/PortMaster/." "$PM/" || fail "Copying PortMaster failed." ""
+chmod +x "$PM/launch.sh" "$PM"/runtime/bin/*
+while IFS='|' read -r KIND SUM URL; do
+    case "$KIND" in
+    pm) [ -f "$PM/PortMaster/pugwash" ] && continue; WHAT="PortMaster" ;;
+    python) [ "$(cat "$PM/runtime/python/.sha256" 2>/dev/null)" = "$SUM" ] && continue; WHAT="Python (for PortMaster)" ;;
+    bash) [ "$(sha "$PM/runtime/bin/bash")" = "$SUM" ] && continue; WHAT="bash (for ports)" ;;
+    *) continue ;;
+    esac
+    status RUN 92 "Downloading PortMaster" "$WHAT"
+    : > "$DL/f"
+    fetch "$URL" "$DL/f" || fail "Download failed: $WHAT" "Check the Wi-Fi connection and run the installer again."
+    [ "$(sha "$DL/f")" = "$SUM" ] || fail "A download was damaged: $WHAT" "Run the installer again."
+    status RUN 93 "Installing PortMaster" "$WHAT"
+    case "$KIND" in
+    pm)
+        rm -rf "$DL/pm"
+        "$RAINEY" --unzip "$DL/f" "$DL/pm" && [ -d "$DL/pm/Apps/PortMaster/PortMaster" ] ||
+            fail "Could not unpack PortMaster" "Run the installer again."
+        rm -rf "$PM/PortMaster"
+        mv "$DL/pm/Apps/PortMaster/PortMaster" "$PM/PortMaster" && cp "$DL/pm/Apps/PortMaster/icon.png" "$PM/icon.png"
+        rm -rf "$DL/pm"
+        ;;
+    python)
+        rm -rf "$DL/py" "$PM/runtime/python"
+        mkdir -p "$DL/py"
+        tar -xzf "$DL/f" -C "$DL/py" || fail "Could not unpack Python" "Run the installer again."
+        L=$DL/py/python/lib
+        # parts PortMaster doesn't use (Tk GUI, tests, pip, headers): saves ~25 MB
+        rm -rf "$DL/py/python/include" "$DL/py/python/share" "$L"/libtcl* "$L"/libtk* "$L"/tcl* "$L"/tk* "$L"/itcl* "$L"/thread* \
+            "$L/python3.11/test" "$L/python3.11/idlelib" "$L/python3.11/tkinter" "$L/python3.11/turtledemo" \
+            "$L/python3.11/ensurepip" "$L/python3.11/lib2to3" "$L"/python3.11/config-3.11-* "$L"/python3.11/site-packages/pip* \
+            "$L"/python3.11/lib-dynload/_tkinter*
+        mv "$DL/py/python" "$PM/runtime/python" && echo "$SUM" > "$PM/runtime/python/.sha256"
+        rm -rf "$DL/py"
+        ;;
+    bash)
+        mv "$DL/f" "$PM/runtime/bin/bash" && chmod +x "$PM/runtime/bin/bash"
+        ;;
+    esac
+    rm -f "$DL/f"
+done < "$MANIFEST"
+chmod -R +x "$PM/PortMaster" "$PM/runtime/python/bin" 2>/dev/null
+
+# 6. LED lights: re-apply the chosen preset at boot and when the TrimUI menu restarts
+status RUN 94 "Finishing up" "LED lights"
 cp "$DEST/raineyleds.init" /etc/init.d/raineyleds && chmod +x /etc/init.d/raineyleds &&
     ln -sf ../init.d/raineyleds /etc/rc.d/S98zraineyleds && /etc/init.d/raineyleds start
 
-# 6. swap file used while N64 and PSP games run (skipped when storage is tight)
+# 7. swap file used while N64 and PSP games run (skipped when storage is tight)
 if [ ! -f /mnt/UDISK/n64_swap ]; then
     FREE_MB=$(( $(df -k /mnt/UDISK | awk 'NR==2 {print $4}') / 1024 ))
     if [ "$FREE_MB" -ge 1200 ]; then

@@ -15,6 +15,9 @@
 #define ROMS_INTERNAL "/mnt/UDISK/Roms"
 #define ROMS_SDCARD "/mnt/SDCARD/Roms"
 #define SDCARD_ROOT "/mnt/SDCARD"
+#define PORTS_DIR "/mnt/UDISK/ports"                       /* PortMaster ports + scripts */
+#define PORTMASTER_ENV "/mnt/UDISK/Apps/PortMaster/runtime/env.sh"
+#define ROM_FOLDERS_FILE "/mnt/UDISK/RaineyUI/rom_folders.txt" /* Settings → ROM folders */
 #define LAUNCH_FILE "/tmp/rainey_launch"
 #define UI_STATE_FILE "/tmp/rainey_ui_state"
 #define DEBUG_INPUT_FILE "/tmp/rainey_input"
@@ -131,6 +134,7 @@ void wifi_stop(void);
 void wifi_screen_draw(void);
 bool wifi_screen_input(InputState *in);
 int sort_cli(void);
+const char *rom_folder_guess(const char *path);
 
 void leds_screen_enter(void);
 void leds_screen_draw(void);
